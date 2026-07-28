@@ -6,6 +6,7 @@ public struct OnboardingWindow: View {
     enum Step {
         case welcome, mic, screen, models,
              calendarPermission, calendarPicker,
+             browserAutomation, claudeBinary,
              done
     }
     @State private var step: Step = .welcome
@@ -45,10 +46,14 @@ public struct OnboardingWindow: View {
                 ModelDownloadView { step = .calendarPermission }
             case .calendarPermission:
                 CalendarPermissionView { granted in
-                    step = granted ? .calendarPicker : .done
+                    step = granted ? .calendarPicker : .browserAutomation
                 }
             case .calendarPicker:
-                CalendarPickerView(settings: settings) { step = .done }
+                CalendarPickerView(settings: settings) { step = .browserAutomation }
+            case .browserAutomation:
+                BrowserAutomationView { step = .claudeBinary }
+            case .claudeBinary:
+                ClaudeBinaryView(settings: settings) { step = .done }
             case .done:
                 Text("You're ready").font(.title)
                 Button("Start using Onyx") {
@@ -59,6 +64,6 @@ public struct OnboardingWindow: View {
                 }
             }
         }
-        .padding(40).frame(width: 480, height: 380)
+        .padding(40).frame(width: 500, height: 400)
     }
 }
