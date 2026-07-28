@@ -11,8 +11,11 @@ public final class AppState: ObservableObject {
     public let settings = SettingsStore()
     public let storage: MeetingStorage
     public let indexer: MeetingIndexer
+    public let calendarWatcher: CalendarWatcher
     private let recorder: Recorder
     private let pipeline: Pipeline
+    private let detectionCoordinator: DetectionCoordinator
+    private let orchestrator: AutoTriggerOrchestrator
 
     public init() {
         storage = MeetingStorage(root: settings.meetingsFolder)
@@ -23,7 +26,31 @@ public final class AppState: ObservableObject {
                                                  withIntermediateDirectories: true)
         indexer = try! MeetingIndexer(dbPath: dbURL)
         recorder = Recorder(storage: storage)
-        pipeline = Pipeline(storage: storage)
+
+        // Build pipeline with optional notes config.
+        let binaryURL: URL? = settings.claudeBinaryPath.isEmpty
+            ? nil : URL(fileURLWithPath: settings.claudeBinaryPath)
+        let notesCfg: NoteGenerationConfig? = (settings.autoNotesEnabled && binaryURL != nil)
+            ? NoteGenerationConfig(binary: binaryURL, level: settings.defaultNoteLevel)
+            : nil
+        pipeline = Pipeline(storage: storage, notes: notesCfg)
+
+        calendarWatcher = CalendarWatcher()
+
+        var detectors: [any MeetingAppDetector] = []
+        if settings.detectionMeetEnabled { detectors.append(MeetDetector()) }
+        if settings.detectionHuddleEnabled { detectors.append(SlackHuddleDetector()) }
+        detectionCoordinator = DetectionCoordinator(detectors: detectors)
+
+        let session = RecorderSession(recorder: recorder, storage: storage, pipeline: pipeline)
+        orchestrator = AutoTriggerOrchestrator(session: session)
+
+        // Wire opt-out notification.
+        let localOrch = orchestrator
+        OptOutNotificationCenter.shared.optOutHandler = {
+            try? await localOrch.optOut()
+        }
+        OptOutNotificationCenter.shared.configureIfNeeded()
     }
 
     public func toggleRecording() {
@@ -31,28 +58,52 @@ public final class AppState: ObservableObject {
             do {
                 switch uiState {
                 case .idle:
-                    let paths = try await recorder.start()
-                    currentSlug = paths.slug
+                    try await orchestrator.manualStart()
                     uiState = .recording
                 case .recording:
-                    let paths = try await recorder.stop()
+                    try await orchestrator.manualStop()
                     uiState = .transcribing
-                    try await pipeline.run(paths: paths)
-                    let meta = try storage.loadMetadata(paths)
-                    let segs = (try? AtomicJSON.read([TranscriptSegment].self,
-                                                     from: paths.transcriptJson)) ?? []
-                    try indexer.upsert(meta: meta, folderPath: paths.root,
-                                       transcriptState: "done", transcript: segs)
-                    currentSlug = nil
+                    // Pipeline runs in the background via RecorderSession.
                     uiState = .idle
                 case .transcribing:
-                    let paths = try await recorder.start()
-                    currentSlug = paths.slug
+                    try await orchestrator.manualStart()
                     uiState = .recording
                 }
             } catch {
                 lastError = String(describing: error)
                 uiState = .idle
+            }
+        }
+    }
+
+    public func bootAutotrigger() {
+        guard settings.autoTriggerEnabled else { return }
+
+        let orch = orchestrator
+        let watcher = calendarWatcher
+        let coordinator = detectionCoordinator
+        let enabledIds = settings.enabledCalendarIds
+
+        // Calendar loop.
+        Task.detached {
+            let matcher = CalendarMatcher(whitelistedCalendarIds: enabledIds)
+            for await match in watcher.matches(matcher: matcher) {
+                await MainActor.run {
+                    OptOutNotificationCenter.shared.showRecordingStarted(title: match.title)
+                }
+                try? await orch.onCalendarEvent(match)
+            }
+        }
+
+        // Detection loop.
+        Task.detached {
+            for await ev in coordinator.events() {
+                if ev.kind == .started {
+                    await MainActor.run {
+                        OptOutNotificationCenter.shared.showRecordingStarted(title: "Meet/Huddle detected")
+                    }
+                }
+                try? await orch.onCallEvent(ev)
             }
         }
     }
