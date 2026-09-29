@@ -5,12 +5,16 @@ but are deliberate. Future reviewers and audit tools should not flag these.
 
 ## Sparkle Auto-Update Infrastructure
 
-**Decision:** The app includes Sparkle framework for auto-updates but the appcast URL
-and distribution infrastructure (S3 bucket, generate_appcast workflow) are not yet
-fully configured.
+**Decision:** Updates are published by `.github/workflows/release.yml` on every push to `main`
+as GitHub Releases. `SUFeedURL` points to `releases/latest/download/appcast.xml`; the appcast
+(one item, the latest version) is generated and EdDSA-signed by `scripts/make-appcast.sh`.
+CI signs the app with the same self-signed "Onyx Local" identity as local builds, imported
+from repository secrets (`CERT_P12_BASE64`, `CERT_P12_PASSWORD`, `SPARKLE_ED_PRIVATE_KEY`).
 
-**Why:** Distribution infrastructure is a separate concern from the app itself. The
-Sparkle integration code is correct; the appcast pipeline will be configured separately.
+**Why:** Same identity across builds keeps TCC permissions (mic, screen recording) valid
+after an update and satisfies Sparkle's signing-identity check. No Developer ID /
+notarization: Gatekeeper friction on first launch is accepted and documented in the README.
+While the repo is private, update checks fail (assets require auth) — expected.
 
 ## Package.resolved tracked in git
 

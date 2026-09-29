@@ -14,7 +14,24 @@ ou par la détection d'une fenêtre Google Meet / Slack Huddle active.
 - Swift 5.9+ (fourni avec Xcode 15+)
 - Optionnel : le CLI `claude` installé localement, pour la génération de notes
 
-## Installation sur une nouvelle machine
+## Installer depuis une release
+
+Télécharger `Onyx-<version>.zip` depuis la
+[dernière release](https://github.com/YvanBetremieux/Onyx/releases/latest), le dézipper et
+glisser `Onyx.app` dans `/Applications`.
+
+L'app est signée avec un certificat auto-signé (pas de notarisation Apple) : au premier
+lancement, macOS la bloque. Ouvrir **Réglages Système → Confidentialité et sécurité →
+« Ouvrir quand même »**, ou en terminal :
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Onyx.app
+```
+
+Les mises à jour arrivent ensuite automatiquement via Sparkle : chaque push sur `main` publie
+une release (`.github/workflows/release.yml`).
+
+## Compiler sur une nouvelle machine
 
 ```bash
 gh auth login                # si gh n'est pas encore configuré sur la machine

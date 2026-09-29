@@ -1,0 +1,91 @@
+# Chaque push sur main : tests, build signé, release GitHub + appcast Sparkle.
+# Voir docs/superpowers/specs/2026-09-29-release-ci-design.md.
+name: Release
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+  workflow_dispatch:
+
+# Les releases se sérialisent : un push arrivé pendant une release attend
+# au lieu de l'annuler (sinon on perdrait un numéro de version publié à moitié).
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache SwiftPM
+        uses: actions/cache@v4
+        with:
+          path: .build
+          key: spm-${{ runner.os }}-${{ hashFiles('Package.resolved') }}
+          restore-keys: spm-${{ runner.os }}-
+
+      - name: sherpa-onnx
+        run: scripts/fetch-sherpa.sh
+
+      - name: Tests
+        run: swift test
+
+      - name: Importer le certificat « Onyx Local »
+        env:
+          CERT_P12_BASE64: ${{ secrets.CERT_P12_BASE64 }}
+          CERT_P12_PASSWORD: ${{ secrets.CERT_P12_PASSWORD }}
+        run: |
+          KC="$RUNNER_TEMP/onyx.keychain-db"
+          KP=$(openssl rand -base64 24)
+          security create-keychain -p "$KP" "$KC"
+          security set-keychain-settings -lut 21600 "$KC"
+          security unlock-keychain -p "$KP" "$KC"
+          printf '%s' "$CERT_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/onyx.p12"
+          security import "$RUNNER_TEMP/onyx.p12" -k "$KC" -P "$CERT_P12_PASSWORD" -T /usr/bin/codesign
+          rm -f "$RUNNER_TEMP/onyx.p12"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KP" "$KC" >/dev/null
+          security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
+          security find-identity -p codesigning "$KC" | grep -q '"Onyx Local"'
+
+      - name: Version
+        run: |
+          # major.minor du plist (qu'il écrive 0.2 ou 0.2.0), patch = numéro de run.
+          MM=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" Resources/Info.plist | cut -d. -f1-2)
+          echo "ONYX_VERSION=$MM.$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
+          echo "ONYX_BUILD=$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
+
+      - name: Build
+        run: |
+          scripts/build-app.sh
+          scripts/check-bundle.sh dist/Onyx.app "$ONYX_VERSION" "$ONYX_BUILD"
+          ditto -c -k --keepParent dist/Onyx.app "dist/Onyx-$ONYX_VERSION.zip"
+
+      - name: Appcast
+        env:
+          SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
+        run: |
+          BASE="https://github.com/$GITHUB_REPOSITORY/releases"
+          scripts/make-appcast.sh "dist/Onyx-$ONYX_VERSION.zip" "$ONYX_VERSION" "$ONYX_BUILD" \
+            "$BASE/download/v$ONYX_VERSION/Onyx-$ONYX_VERSION.zip" \
+            "$BASE/tag/v$ONYX_VERSION" \
+            dist/appcast.xml
+
+      - name: Release GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v$ONYX_VERSION" "dist/Onyx-$ONYX_VERSION.zip" dist/appcast.xml \
+            --title "Onyx $ONYX_VERSION" --target "$GITHUB_SHA" --generate-notes --latest
+
+      - name: Nettoyer le trousseau
+        if: always()
+        run: security delete-keychain "$RUNNER_TEMP/onyx.keychain-db" 2>/dev/null || true
