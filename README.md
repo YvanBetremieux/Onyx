@@ -17,13 +17,18 @@ ou par la détection d'une fenêtre Google Meet / Slack Huddle active.
 ## Installation sur une nouvelle machine
 
 ```bash
-git clone git@github-perso:YvanBetremieux/Onyx.git
+gh auth login                # si gh n'est pas encore configuré sur la machine
+gh repo clone YvanBetremieux/Onyx
 cd Onyx
 
 scripts/fetch-sherpa.sh    # télécharge les dylibs sherpa-onnx dans Vendor/ + le header c-api.h
 scripts/setup-cert.sh      # crée l'identité de signature locale "Onyx Local" dans le trousseau
 scripts/build-app.sh       # build release + bundle + signature → dist/Onyx.app
 ```
+
+Le repo est privé : le clone suppose d'être authentifié sur le compte `YvanBetremieux`.
+En SSH direct : `git clone git@github.com:YvanBetremieux/Onyx.git` (nécessite que la clé SSH
+de la machine soit enregistrée sur ce compte).
 
 `Vendor/sherpa-onnx/` et `Sources/CSherpaOnnx/include/c-api.h` ne sont **pas** versionnés :
 ils sont régénérés par `fetch-sherpa.sh`. De même, le certificat de signature est propre à
