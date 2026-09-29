@@ -39,7 +39,7 @@ struct CalendarPickerView: View {
                     settings.enabledCalendarIds = Array(selected)
                     onDone()
                 }
-                .keyboardShortcut(.defaultAction)
+                .buttonStyle(.borderedProminent)
             }
         }
         .padding(30)

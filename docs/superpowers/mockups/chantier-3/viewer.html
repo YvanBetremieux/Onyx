@@ -1,0 +1,1794 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<title>Onyx · Chantier 3 · Viewer mockup</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  /* =========================================================
+     Onyx Chantier 3 — Viewer mockup
+     Aesthetic: native macOS raffiné (Things 3 / Bear / Reeder)
+     ========================================================= */
+
+  :root {
+    --bg-desktop: #d5cfc4;
+    --bg-window: rgba(250, 249, 246, 0.86);
+    --bg-sidebar: rgba(242, 240, 235, 0.72);
+    --bg-notes: rgba(255, 253, 249, 0.9);
+    --bg-elevated: rgba(255, 255, 255, 0.55);
+
+    --ink: #1a1918;
+    --ink-2: #52514f;
+    --ink-3: #8a8884;
+    --ink-4: #b3b0aa;
+
+    --line: rgba(26, 25, 24, 0.08);
+    --line-strong: rgba(26, 25, 24, 0.16);
+
+    --accent: #2c5aa8;
+    --accent-soft: rgba(44, 90, 168, 0.10);
+    --accent-hover: rgba(44, 90, 168, 0.06);
+
+    --hi-ochre: #c68a2e;
+    --hi-ochre-bg: rgba(198, 138, 46, 0.20);
+    --hi-teal: #1f6b6b;
+    --hi-teal-bg: rgba(31, 107, 107, 0.14);
+
+    --shadow-window: 0 40px 80px -20px rgba(26, 20, 12, 0.35),
+                     0 12px 32px -8px rgba(26, 20, 12, 0.18),
+                     0 0 0 0.5px rgba(0, 0, 0, 0.15);
+    --shadow-toolbar: inset 0 -0.5px 0 rgba(0, 0, 0, 0.08);
+
+    --font-display: "SF Pro Display", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --font-body: "SF Pro Text", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --font-serif: "New York", "Charter", "Iowan Old Style", ui-serif, Georgia, serif;
+    --font-mono: "SF Mono", "Menlo", ui-monospace, monospace;
+
+    --radius-window: 12px;
+    --radius-panel: 8px;
+    --radius-chip: 6px;
+
+    --dur: 200ms;
+    --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-family: var(--font-body);
+    font-feature-settings: "ss01", "ss02", "cv11";
+    color: var(--ink);
+  }
+
+  body {
+    background:
+      radial-gradient(1200px 800px at 15% 10%, #efe8dc 0%, transparent 55%),
+      radial-gradient(1000px 700px at 85% 90%, #d8d0c1 0%, transparent 60%),
+      var(--bg-desktop);
+    padding: 44px 32px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    overflow-x: hidden;
+  }
+
+  /* ---------- Showcase state switcher (not part of the app) ---------- */
+  .showcase-bar {
+    display: inline-flex;
+    gap: 2px;
+    padding: 3px;
+    background: rgba(255, 255, 255, 0.55);
+    border: 0.5px solid var(--line-strong);
+    border-radius: 999px;
+    backdrop-filter: blur(20px) saturate(1.3);
+    -webkit-backdrop-filter: blur(20px) saturate(1.3);
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    color: var(--ink-2);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  .showcase-bar button {
+    all: unset;
+    padding: 6px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+  }
+  .showcase-bar button:hover { color: var(--ink); }
+  .showcase-bar button[aria-pressed="true"] {
+    background: var(--ink);
+    color: #f6f4ef;
+  }
+  .showcase-note {
+    font-family: var(--font-body);
+    font-size: 11px;
+    color: var(--ink-3);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  /* ---------- Window chrome ---------- */
+  .window {
+    width: min(1280px, 95vw);
+    height: 820px;
+    background: var(--bg-window);
+    border-radius: var(--radius-window);
+    box-shadow: var(--shadow-window);
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: 44px 1fr;
+    grid-template-columns: 260px 1fr;
+    grid-template-areas:
+      "titlebar titlebar"
+      "sidebar  main";
+    backdrop-filter: blur(30px) saturate(1.4);
+    -webkit-backdrop-filter: blur(30px) saturate(1.4);
+    position: relative;
+    isolation: isolate;
+  }
+
+  .titlebar {
+    grid-area: titlebar;
+    display: grid;
+    grid-template-columns: 260px 1fr auto;
+    align-items: center;
+    padding: 0 16px 0 20px;
+    border-bottom: 0.5px solid var(--line);
+    background: linear-gradient(to bottom,
+      rgba(255,255,255,0.35) 0%,
+      rgba(255,255,255,0.15) 100%);
+    box-shadow: var(--shadow-toolbar);
+    -webkit-app-region: drag;
+    user-select: none;
+    z-index: 3;
+  }
+  .traffic {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .traffic i {
+    width: 12px; height: 12px; border-radius: 50%;
+    display: inline-block;
+    box-shadow: inset 0 0 0 0.5px rgba(0,0,0,0.2);
+  }
+  .traffic i:nth-child(1) { background: #ff5f57; }
+  .traffic i:nth-child(2) { background: #febc2e; }
+  .traffic i:nth-child(3) { background: #28c840; }
+
+  .titlebar-title {
+    grid-column: 2;
+    text-align: center;
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: -0.006em;
+    color: var(--ink-2);
+  }
+  .titlebar-title strong {
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .titlebar-title .sep {
+    color: var(--ink-4);
+    margin: 0 8px;
+  }
+
+  .titlebar-actions {
+    display: flex;
+    gap: 4px;
+    -webkit-app-region: no-drag;
+  }
+  .icon-btn {
+    all: unset;
+    width: 28px; height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    color: var(--ink-2);
+    cursor: pointer;
+    transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+  }
+  .icon-btn:hover { background: var(--accent-hover); color: var(--ink); }
+  .icon-btn svg { width: 15px; height: 15px; stroke-width: 1.6; }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar {
+    grid-area: sidebar;
+    background: var(--bg-sidebar);
+    border-right: 0.5px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    padding: 8px 8px 8px 8px;
+    overflow: hidden;
+    position: relative;
+  }
+  .sidebar::after {
+    /* subtle inner vignette */
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to right, transparent 90%, rgba(0,0,0,0.03) 100%);
+    pointer-events: none;
+  }
+
+  .search-box {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 28px;
+    padding: 0 8px;
+    margin: 4px 4px 12px 4px;
+    background: rgba(0, 0, 0, 0.045);
+    border-radius: var(--radius-chip);
+    color: var(--ink-3);
+    font-size: 12px;
+    transition: background var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+  }
+  .search-box:focus-within {
+    background: #fff;
+    box-shadow: 0 0 0 3px var(--accent-soft), inset 0 0 0 0.5px var(--line-strong);
+    color: var(--ink);
+  }
+  .search-box svg { width: 13px; height: 13px; flex-shrink: 0; }
+  .search-box input {
+    all: unset;
+    flex: 1;
+    font: inherit;
+    color: var(--ink);
+    min-width: 0;
+  }
+  .search-box input::placeholder { color: var(--ink-3); }
+  .search-box .kbd {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--ink-3);
+    background: rgba(0,0,0,0.05);
+    padding: 1px 5px;
+    border-radius: 4px;
+    letter-spacing: 0.02em;
+  }
+
+  .sidebar-scroll {
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,0,0,0.15) transparent;
+    padding-right: 2px;
+  }
+  .sidebar-scroll::-webkit-scrollbar { width: 6px; }
+  .sidebar-scroll::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.12);
+    border-radius: 3px;
+  }
+
+  .date-group {
+    margin-bottom: 4px;
+  }
+  .date-group h3 {
+    font-family: var(--font-body);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    padding: 10px 10px 6px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .date-group h3 .count {
+    font-family: var(--font-mono);
+    font-weight: 400;
+    letter-spacing: 0;
+    color: var(--ink-4);
+    text-transform: none;
+    font-size: 10px;
+  }
+
+  .meeting-row {
+    all: unset;
+    display: grid;
+    grid-template-columns: 44px 1fr auto;
+    align-items: center;
+    padding: 7px 10px;
+    border-radius: var(--radius-chip);
+    cursor: pointer;
+    color: var(--ink);
+    line-height: 1.35;
+    transition: background var(--dur) var(--ease);
+    position: relative;
+  }
+  .meeting-row:hover { background: rgba(0,0,0,0.035); }
+  .meeting-row .time {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-3);
+    letter-spacing: -0.01em;
+  }
+  .meeting-row .title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink);
+    letter-spacing: -0.005em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-left: 2px;
+  }
+  .meeting-row .meta {
+    font-size: 11px;
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+    padding-left: 8px;
+  }
+  .meeting-row .badges {
+    grid-column: 2;
+    padding: 2px 0 0 2px;
+    display: flex;
+    gap: 4px;
+  }
+  .meeting-row.selected {
+    background: var(--accent-soft);
+  }
+  .meeting-row.selected::before {
+    content: "";
+    position: absolute;
+    left: -2px;
+    top: 6px;
+    bottom: 6px;
+    width: 2px;
+    border-radius: 2px;
+    background: var(--accent);
+  }
+  .meeting-row.selected .title { color: var(--accent); font-weight: 600; }
+  .meeting-row.selected .time { color: var(--accent); }
+
+  .source-badge {
+    display: inline-flex;
+    align-items: center;
+    height: 15px;
+    padding: 0 5px;
+    border-radius: 3px;
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-family: var(--font-mono);
+  }
+  .source-meet { background: rgba(24, 128, 56, 0.10); color: #186034; }
+  .source-cal  { background: rgba(60, 60, 200, 0.10); color: #2a3aa3; }
+  .source-huddle{ background: rgba(154, 60, 200, 0.10); color: #6c2a90; }
+  .source-manual{ background: rgba(120, 120, 120, 0.12); color: #55524d; }
+
+  .sidebar-footer {
+    padding: 10px 12px 6px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 0.5px solid var(--line);
+    margin-top: 4px;
+  }
+  .sidebar-footer .status {
+    display: inline-flex; gap: 6px; align-items: center;
+    font-size: 11px; color: var(--ink-3);
+  }
+  .sidebar-footer .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #2fbe4a;
+    box-shadow: 0 0 0 2px rgba(47,190,74,0.15);
+  }
+
+  /* ---------- Main content ---------- */
+  .main {
+    grid-area: main;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    overflow: hidden;
+    background: rgba(255,255,255,0.35);
+    position: relative;
+  }
+
+  .doc-header {
+    padding: 22px 32px 16px 32px;
+    border-bottom: 0.5px solid var(--line);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: end;
+  }
+  .doc-breadcrumb {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .doc-breadcrumb .sep { color: var(--ink-4); }
+  .doc-breadcrumb .source-badge { text-transform: uppercase; }
+
+  .doc-title {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -0.022em;
+    color: var(--ink);
+    line-height: 1.15;
+  }
+  .doc-subtitle {
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--ink-2);
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .doc-subtitle .sep { color: var(--ink-4); }
+  .participants {
+    display: flex;
+    margin-left: 4px;
+  }
+  .participants .avatar {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: #fff;
+    border: 1.5px solid var(--bg-window);
+    margin-left: -6px;
+    font-family: var(--font-body);
+  }
+  .participants .avatar:first-child { margin-left: 0; }
+  .a1 { background: linear-gradient(135deg, #d97757 0%, #b85a3c 100%); }
+  .a2 { background: linear-gradient(135deg, #4a7c9e 0%, #2c5a7e 100%); }
+  .a3 { background: linear-gradient(135deg, #6a8b3a 0%, #4d6b23 100%); }
+  .a4 { background: linear-gradient(135deg, #8a6ba8 0%, #6a4a8a 100%); }
+
+  .doc-actions {
+    display: flex;
+    gap: 6px;
+    padding-bottom: 4px;
+  }
+  .pill-btn {
+    all: unset;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    height: 26px;
+    border-radius: 6px;
+    background: var(--bg-elevated);
+    border: 0.5px solid var(--line-strong);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink);
+    cursor: pointer;
+    letter-spacing: -0.002em;
+    transition: background var(--dur) var(--ease);
+  }
+  .pill-btn:hover { background: rgba(255,255,255,0.85); }
+  .pill-btn svg { width: 12px; height: 12px; }
+  .pill-btn.primary {
+    background: var(--accent);
+    color: #fff;
+    border-color: transparent;
+  }
+  .pill-btn.primary:hover { background: #234a8f; }
+
+  /* ---------- Split panels ---------- */
+  .panels {
+    display: grid;
+    /* notes (center, wider) | draggable divider | transcript (side)
+       column widths are driven by CSS vars set from JS on drag */
+    grid-template-columns:
+      minmax(320px, var(--notes-w, 1.55fr))
+      5px
+      minmax(280px, var(--transcript-w, 1fr));
+    overflow: hidden;
+  }
+  .resizer {
+    position: relative;
+    background: transparent;
+    cursor: col-resize;
+    z-index: 2;
+    transition: background 150ms var(--ease);
+  }
+  .resizer::before {
+    /* the visible hairline sits in the middle of the wider hit-target */
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 0; bottom: 0;
+    width: 0.5px;
+    background: var(--line);
+    transform: translateX(-50%);
+  }
+  .resizer::after {
+    /* subtle grip that appears on hover */
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 3px;
+    height: 40px;
+    border-radius: 2px;
+    background: var(--ink-4);
+    transform: translate(-50%, -50%);
+    opacity: 0;
+    transition: opacity 150ms var(--ease);
+  }
+  .resizer:hover::after,
+  .resizer.dragging::after { opacity: 0.7; }
+  .resizer.dragging::before { background: var(--accent); }
+  body.dragging-resizer { cursor: col-resize !important; user-select: none; }
+  body.dragging-resizer * { cursor: col-resize !important; }
+
+  /* Transcript column */
+  .transcript {
+    overflow-y: auto;
+    padding: 20px 32px 40px 32px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,0,0,0.15) transparent;
+  }
+  .transcript::-webkit-scrollbar { width: 8px; }
+  .transcript::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 4px; }
+
+  .transcript-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 0.5px solid var(--line);
+  }
+  .transcript-header h4 {
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+  }
+  .transcript-header .tools {
+    display: flex; gap: 4px;
+  }
+
+  .turn {
+    display: grid;
+    grid-template-columns: 62px 1fr;
+    gap: 14px;
+    padding: 10px 0;
+    align-items: baseline;
+  }
+  .turn + .turn {
+    border-top: 0.5px solid transparent;
+  }
+  .turn .meta {
+    text-align: right;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+    padding-top: 3px;
+  }
+  .turn .body {
+    font-family: var(--font-body);
+    font-size: 14.5px;
+    line-height: 1.55;
+    color: var(--ink);
+    letter-spacing: -0.003em;
+  }
+  .speaker {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.005em;
+    margin-right: 6px;
+  }
+  .speaker .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    display: inline-block;
+  }
+  .sp-yb  { color: #b85a3c; }
+  .sp-yb  .dot { background: #d97757; }
+  .sp-sm  { color: #2c5a7e; }
+  .sp-sm  .dot { background: #4a7c9e; }
+  .sp-jd  { color: #4d6b23; }
+  .sp-jd  .dot { background: #6a8b3a; }
+
+  mark.hi {
+    background: var(--hi-ochre-bg);
+    color: var(--hi-ochre);
+    padding: 0 3px;
+    border-radius: 3px;
+    font-weight: 500;
+  }
+
+  .turn.editable .body {
+    outline: 2px solid var(--accent-soft);
+    outline-offset: 4px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.5);
+    padding: 6px 8px;
+    margin: -6px -8px;
+  }
+  .turn.editable::after {
+    content: "editing";
+    position: absolute;
+    right: 16px;
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 2px 6px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .turn { position: relative; }
+
+  /* Notes column */
+  .notes {
+    background: var(--bg-notes);
+    display: grid;
+    grid-template-rows: auto 1fr;
+    overflow: hidden;
+    min-width: 0;
+  }
+  .notes-tabs {
+    display: flex;
+    gap: 2px;
+    padding: 14px 20px 0 20px;
+    border-bottom: 0.5px solid var(--line);
+    position: relative;
+    align-items: center;
+  }
+  .notes-tools {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 4px;
+  }
+  .edit-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    background: transparent;
+    color: var(--ink-3);
+    border-radius: 4px;
+    font-size: 10.5px;
+    font-family: var(--font-mono);
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    font-weight: 500;
+    transition: color 200ms var(--ease), background 200ms var(--ease);
+  }
+  .edit-status svg { width: 10px; height: 10px; opacity: 0.75; }
+  .edit-status.saving {
+    background: rgba(198, 138, 46, 0.10);
+    color: var(--hi-ochre);
+  }
+  .edit-status.saved {
+    color: #1f7a34;
+  }
+  .edit-status.saved svg { color: #1f7a34; opacity: 1; }
+
+  .tool-btn {
+    all: unset;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 8px;
+    height: 24px;
+    border-radius: 5px;
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--ink-2);
+    cursor: pointer;
+    letter-spacing: -0.002em;
+    transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+  }
+  .tool-btn:hover { background: rgba(0,0,0,0.05); color: var(--ink); }
+  .tool-btn svg { width: 12px; height: 12px; stroke-width: 1.7; }
+  .tool-btn[hidden] { display: none !important; }
+  .tool-btn.danger:hover { background: rgba(200, 60, 60, 0.10); color: #b83a3a; }
+
+  /* Hide transcript panel: notes go full width, transcript unmounts */
+  body.panel-hidden .panels {
+    grid-template-columns: 1fr;
+  }
+  body.panel-hidden #resizer,
+  body.panel-hidden .transcript { display: none; }
+
+  /* Floating "show transcript" pill, only when panel is hidden */
+  .show-panel-fab {
+    position: absolute;
+    right: 14px;
+    top: 96px;
+    display: none;
+    align-items: center;
+    gap: 6px;
+    height: 28px;
+    padding: 0 10px 0 8px;
+    background: rgba(255,255,255,0.85);
+    border: 0.5px solid var(--line-strong);
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--ink);
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    z-index: 5;
+    transition: background var(--dur) var(--ease);
+  }
+  .show-panel-fab:hover { background: #fff; }
+  .show-panel-fab svg { width: 12px; height: 12px; stroke-width: 1.8; }
+  body.panel-hidden .show-panel-fab { display: inline-flex; }
+
+  /* Confirm dialog */
+  .dialog-scrim {
+    position: absolute;
+    inset: 0;
+    background: rgba(30, 25, 20, 0.28);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+    animation: fade 180ms var(--ease);
+  }
+  .dialog-scrim.open { display: flex; }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+  .dialog {
+    width: 340px;
+    background: rgba(252, 250, 246, 0.98);
+    border-radius: 12px;
+    box-shadow:
+      0 30px 60px -15px rgba(0,0,0,0.35),
+      0 8px 24px -6px rgba(0,0,0,0.18),
+      0 0 0 0.5px rgba(0,0,0,0.12);
+    padding: 22px 22px 16px 22px;
+    text-align: center;
+    animation: pop 200ms var(--ease);
+  }
+  @keyframes pop {
+    from { opacity: 0; transform: translateY(6px) scale(0.98); }
+    to { opacity: 1; transform: none; }
+  }
+  .dialog h3 {
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 6px;
+    letter-spacing: -0.008em;
+  }
+  .dialog p {
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--ink-2);
+    margin-bottom: 18px;
+  }
+  .dialog p code {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    background: rgba(0,0,0,0.05);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--ink);
+  }
+  .dialog-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .dialog-btn {
+    all: unset;
+    text-align: center;
+    padding: 7px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 0.5px solid var(--line-strong);
+    background: rgba(255,255,255,0.6);
+    color: var(--ink);
+    transition: background var(--dur) var(--ease);
+  }
+  .dialog-btn:hover { background: #fff; }
+  .dialog-btn.destructive {
+    background: #c0393a;
+    color: #fff;
+    border-color: transparent;
+    font-weight: 600;
+  }
+  .dialog-btn.destructive:hover { background: #a12e2f; }
+
+  .notes-body[contenteditable="true"] {
+    outline: none;
+  }
+  .notes-body[contenteditable="true"]:focus-within h1,
+  .notes-body[contenteditable="true"]:focus-within h2,
+  .notes-body[contenteditable="true"]:focus-within p,
+  .notes-body[contenteditable="true"]:focus-within li {
+    caret-color: var(--accent);
+  }
+  .notes-body [contenteditable="true"]:focus,
+  .notes-body:focus {
+    outline: none;
+  }
+  /* Selection color inside notes */
+  .notes-body ::selection {
+    background: var(--accent-soft);
+    color: var(--ink);
+  }
+  .tab {
+    all: unset;
+    padding: 8px 12px 10px 12px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--ink-2);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    letter-spacing: -0.003em;
+    transition: color var(--dur) var(--ease);
+  }
+  .tab:hover { color: var(--ink); }
+  .tab[aria-selected="true"] {
+    color: var(--ink);
+    border-bottom-color: var(--accent);
+    font-weight: 600;
+  }
+  .tab svg { width: 13px; height: 13px; opacity: 0.8; }
+
+  /* Live tab — subtle red dot when the meeting is currently recording */
+  .tab.live::after {
+    content: "";
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #d9534f;
+    box-shadow: 0 0 0 0 rgba(217, 83, 79, 0.6);
+    animation: livePulse 1.6s ease-out infinite;
+    margin-left: 2px;
+  }
+  @keyframes livePulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(217, 83, 79, 0.55); }
+    50%      { box-shadow: 0 0 0 5px rgba(217, 83, 79, 0);   }
+  }
+  /* Turn off pulse if not "recording" — placeholder for demo, defaults on */
+  body:not(.recording) .tab.live::after { animation: none; box-shadow: none; }
+  body.recording .tab.live { color: #b83a3a; }
+
+  /* Regeneration warning banner */
+  .regen-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    background: linear-gradient(to bottom, rgba(198, 138, 46, 0.10), rgba(198, 138, 46, 0.05));
+    border-bottom: 0.5px solid rgba(198, 138, 46, 0.35);
+    color: var(--ink);
+    font-size: 12.5px;
+    animation: rise 250ms var(--ease);
+  }
+  .regen-banner[hidden] { display: none !important; }
+  .regen-banner > svg {
+    width: 16px; height: 16px;
+    color: var(--hi-ochre);
+    flex-shrink: 0;
+  }
+  .regen-copy {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.3;
+    flex: 1;
+    min-width: 0;
+  }
+  .regen-copy strong {
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  .regen-copy span {
+    font-size: 11.5px;
+    color: var(--ink-2);
+  }
+
+  .notes-body {
+    overflow-y: auto;
+    padding: 24px 28px 40px 28px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,0,0,0.15) transparent;
+  }
+  .notes-body::-webkit-scrollbar { width: 8px; }
+  .notes-body::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 4px; }
+
+  .notes-body h1 {
+    font-family: var(--font-serif);
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.018em;
+    color: var(--ink);
+    margin-bottom: 4px;
+    line-height: 1.2;
+  }
+  .notes-body .lede {
+    font-family: var(--font-serif);
+    font-size: 15px;
+    font-style: italic;
+    color: var(--ink-2);
+    line-height: 1.55;
+    margin-bottom: 22px;
+    padding-bottom: 16px;
+    border-bottom: 0.5px solid var(--line);
+  }
+  .notes-body h2 {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 22px 0 10px 0;
+  }
+  .notes-body p {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--ink);
+    margin-bottom: 12px;
+  }
+  .notes-body ul {
+    list-style: none;
+    padding: 0;
+  }
+  .notes-body ul li {
+    font-size: 14px;
+    line-height: 1.55;
+    padding: 8px 0 8px 22px;
+    position: relative;
+    color: var(--ink);
+    border-bottom: 0.5px solid var(--line);
+  }
+  .notes-body ul li:last-child { border-bottom: none; }
+  .notes-body ul li::before {
+    content: "";
+    position: absolute;
+    left: 4px;
+    top: 15px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--ink-3);
+  }
+  .notes-body ul li strong {
+    color: var(--ink);
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+
+  .action-item {
+    display: grid;
+    grid-template-columns: 18px 1fr auto;
+    gap: 10px;
+    padding: 10px 0;
+    align-items: start;
+    border-bottom: 0.5px solid var(--line);
+    font-size: 13.5px;
+  }
+  .action-item .check {
+    width: 15px; height: 15px;
+    border: 1.2px solid var(--ink-3);
+    border-radius: 3px;
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+  .action-item .owner {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding-top: 2px;
+  }
+  .action-item::before { content: none; }
+
+  .notes-footer {
+    margin-top: 28px;
+    padding-top: 14px;
+    border-top: 0.5px solid var(--line);
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--ink-3);
+    letter-spacing: 0.02em;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  /* ---------- Bottom audio scrubber ---------- */
+  .scrubber {
+    height: 46px;
+    border-top: 0.5px solid var(--line);
+    background: linear-gradient(to bottom,
+      rgba(255,255,255,0.4) 0%,
+      rgba(255,255,255,0.7) 100%);
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    align-items: center;
+    gap: 14px;
+    padding: 0 20px;
+  }
+  .play-btn {
+    all: unset;
+    width: 30px; height: 30px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--ink);
+    color: #fff;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform 150ms var(--ease);
+  }
+  .play-btn:hover { transform: scale(1.06); }
+  .play-btn svg { width: 12px; height: 12px; }
+  .track {
+    height: 26px;
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .waveform {
+    width: 100%;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    gap: 1.5px;
+  }
+  .waveform i {
+    display: inline-block;
+    width: 2px;
+    background: var(--ink-4);
+    border-radius: 1px;
+    opacity: 0.75;
+  }
+  .waveform i.active { background: var(--accent); opacity: 1; }
+  .time-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-2);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+  .speed-btn {
+    all: unset;
+    padding: 4px 8px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-2);
+    background: rgba(0,0,0,0.05);
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .speed-btn:hover { background: rgba(0,0,0,0.08); color: var(--ink); }
+
+  /* ================================================
+     STATE: SEARCH — overlays the sidebar with results
+     ================================================ */
+  .search-results {
+    display: none;
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px;
+  }
+  .search-summary {
+    padding: 6px 12px 10px 12px;
+    font-size: 11px;
+    color: var(--ink-3);
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--font-mono);
+    letter-spacing: 0.02em;
+  }
+  .result-row {
+    padding: 10px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-bottom: 2px;
+  }
+  .result-row:hover { background: rgba(0,0,0,0.035); }
+  .result-row.selected {
+    background: var(--accent-soft);
+  }
+  .result-row .title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.005em;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 3px;
+  }
+  .result-row .date {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--ink-3);
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+  }
+  .result-row .snippet {
+    font-size: 12px;
+    color: var(--ink-2);
+    line-height: 1.45;
+    margin-top: 2px;
+  }
+  .result-row .snippet mark {
+    background: var(--hi-ochre-bg);
+    color: var(--hi-ochre);
+    padding: 0 2px;
+    border-radius: 2px;
+  }
+  .result-row .context {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+    font-size: 10.5px;
+    color: var(--ink-3);
+    font-family: var(--font-mono);
+  }
+  .result-row .context .sep { color: var(--ink-4); }
+
+  /* ================================================
+     STATE BODY SWITCHING
+     ================================================ */
+  body[data-state="browse"] .search-results,
+  body[data-state="edit"]   .search-results { display: none; }
+  body[data-state="search"] .sidebar-scroll { display: none; }
+  body[data-state="search"] .search-results { display: block; }
+  body[data-state="search"] .search-box     { background: #fff; box-shadow: 0 0 0 3px var(--accent-soft), inset 0 0 0 0.5px var(--line-strong); color: var(--ink); }
+  body[data-state="edit"]   .transcript     { background: rgba(250,247,240,0.5); }
+
+  /* ---------- Load animation ---------- */
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .window { animation: rise 500ms var(--ease) both; }
+  .meeting-row,
+  .turn,
+  .result-row {
+    animation: rise 400ms var(--ease) both;
+  }
+  .meeting-row { animation-delay: calc(var(--i, 0) * 30ms + 100ms); }
+  .turn        { animation-delay: calc(var(--i, 0) * 40ms + 200ms); }
+  .result-row  { animation-delay: calc(var(--i, 0) * 40ms + 100ms); }
+
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body data-state="browse">
+
+  <!-- Showcase state toggle (design tool, not part of the app) -->
+  <div class="showcase-note">Onyx · Chantier 3 · Viewer mockup</div>
+  <div class="showcase-bar" role="tablist" aria-label="Preview state">
+    <button data-state="browse" aria-pressed="true">Browse</button>
+    <button data-state="search" aria-pressed="false">Search</button>
+    <button data-state="edit"   aria-pressed="false">Edit</button>
+  </div>
+
+  <!-- The app window -->
+  <div class="window" role="application" aria-label="Onyx Viewer">
+
+    <div class="titlebar">
+      <div class="traffic" aria-hidden="true">
+        <i></i><i></i><i></i>
+      </div>
+      <div class="titlebar-title">
+        <strong>Onyx</strong>
+        <span class="sep">/</span>
+        Meetings
+        <span class="sep">/</span>
+        <span>Pipeline debug session</span>
+      </div>
+      <div class="titlebar-actions">
+        <button class="icon-btn" title="Toggle sidebar" aria-label="Toggle sidebar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/></svg>
+        </button>
+        <button class="icon-btn" title="Regenerate notes" aria-label="Regenerate notes">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>
+        </button>
+        <button class="icon-btn" title="Share" aria-label="Share">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="search-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" placeholder="Rechercher meetings, transcripts, notes…" value="" />
+        <span class="kbd">⌘K</span>
+      </div>
+
+      <!-- Default browse list -->
+      <div class="sidebar-scroll">
+        <div class="date-group">
+          <h3>Aujourd'hui <span class="count">2</span></h3>
+          <button class="meeting-row selected" style="--i:0">
+            <span class="time">15:10</span>
+            <span class="title">Pipeline debug session</span>
+            <span class="meta">12′</span>
+            <span class="badges"><span class="source-badge source-manual">Manual</span></span>
+          </button>
+          <button class="meeting-row" style="--i:1">
+            <span class="time">09:00</span>
+            <span class="title">Standup équipe backend</span>
+            <span class="meta">21′</span>
+            <span class="badges"><span class="source-badge source-cal">Cal</span></span>
+          </button>
+        </div>
+
+        <div class="date-group">
+          <h3>Hier <span class="count">3</span></h3>
+          <button class="meeting-row" style="--i:2">
+            <span class="time">17:34</span>
+            <span class="title">Chantier 2 kick-off</span>
+            <span class="meta">44′</span>
+            <span class="badges"><span class="source-badge source-meet">Meet</span></span>
+          </button>
+          <button class="meeting-row" style="--i:3">
+            <span class="time">14:20</span>
+            <span class="title">Design review — onboarding</span>
+            <span class="meta">32′</span>
+            <span class="badges"><span class="source-badge source-huddle">Huddle</span></span>
+          </button>
+          <button class="meeting-row" style="--i:4">
+            <span class="time">10:00</span>
+            <span class="title">1:1 avec Sébastien</span>
+            <span class="meta">28′</span>
+            <span class="badges"><span class="source-badge source-cal">Cal</span></span>
+          </button>
+        </div>
+
+        <div class="date-group">
+          <h3>Cette semaine <span class="count">7</span></h3>
+          <button class="meeting-row" style="--i:5">
+            <span class="time">Mar 15h</span>
+            <span class="title">Whisper large-v3 benchmark</span>
+            <span class="meta">18′</span>
+            <span class="badges"><span class="source-badge source-manual">Manual</span></span>
+          </button>
+          <button class="meeting-row" style="--i:6">
+            <span class="time">Mar 10h</span>
+            <span class="title">Product review — Q3</span>
+            <span class="meta">1h07</span>
+            <span class="badges"><span class="source-badge source-meet">Meet</span></span>
+          </button>
+          <button class="meeting-row" style="--i:7">
+            <span class="time">Lun 16h</span>
+            <span class="title">Alignment diarization</span>
+            <span class="meta">37′</span>
+            <span class="badges"><span class="source-badge source-cal">Cal</span></span>
+          </button>
+        </div>
+
+        <div class="date-group">
+          <h3>Juillet <span class="count">18</span></h3>
+          <button class="meeting-row" style="--i:8">
+            <span class="time">29 juil.</span>
+            <span class="title">Chantier 1 wrap-up</span>
+            <span class="meta">52′</span>
+            <span class="badges"><span class="source-badge source-cal">Cal</span></span>
+          </button>
+          <button class="meeting-row" style="--i:9">
+            <span class="time">28 juil.</span>
+            <span class="title">Onboarding UX critique</span>
+            <span class="meta">1h12</span>
+            <span class="badges"><span class="source-badge source-meet">Meet</span></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Search results (shown in search state) -->
+      <div class="search-results">
+        <div class="search-summary">
+          <span>14 résultats · 0.02 s</span>
+          <span>▼ pertinence</span>
+        </div>
+        <div class="result-row selected" style="--i:0">
+          <div class="title">
+            Pipeline debug session
+            <span class="date">Aujourd'hui · 15:10</span>
+          </div>
+          <div class="snippet">
+            …le pipeline est resté figé sur <mark>whisper_mic in_progress</mark> pendant plus de 4 minutes, mais c'était en fait la compilation Core ML au premier run…
+          </div>
+          <div class="context">
+            <span>YB</span><span class="sep">·</span><span>00:03:42</span><span class="sep">·</span><span>3 matches</span>
+          </div>
+        </div>
+        <div class="result-row" style="--i:1">
+          <div class="title">
+            Whisper large-v3 benchmark
+            <span class="date">Mar. · 15:00</span>
+          </div>
+          <div class="snippet">
+            …le premier <mark>whisper</mark> prend 4 à 5 minutes de compil Core ML sur cold cache, ensuite c'est cache disque et ça descend à quelques secondes…
+          </div>
+          <div class="context">
+            <span>SM</span><span class="sep">·</span><span>00:08:15</span><span class="sep">·</span><span>2 matches</span>
+          </div>
+        </div>
+        <div class="result-row" style="--i:2">
+          <div class="title">
+            Chantier 2 kick-off
+            <span class="date">Hier · 17:34</span>
+          </div>
+          <div class="snippet">
+            …on doit décider ce qu'on fait quand <mark>whisper</mark> échoue silencieusement, la fire-and-forget task avale tout, on ne voit rien côté UI…
+          </div>
+          <div class="context">
+            <span>JD</span><span class="sep">·</span><span>00:22:08</span><span class="sep">·</span><span>1 match</span>
+          </div>
+        </div>
+        <div class="result-row" style="--i:3">
+          <div class="title">
+            Alignment diarization
+            <span class="date">Lun. · 16:00</span>
+          </div>
+          <div class="snippet">
+            …post-<mark>whisper</mark> on merge les segments par speaker en s'appuyant sur la diarization, le décalage timestamp est corrigé au moment du…
+          </div>
+          <div class="context">
+            <span>YB</span><span class="sep">·</span><span>00:14:33</span><span class="sep">·</span><span>4 matches</span>
+          </div>
+        </div>
+        <div class="result-row" style="--i:4">
+          <div class="title">
+            Chantier 1 wrap-up
+            <span class="date">29 juil. · 15:00</span>
+          </div>
+          <div class="snippet">
+            …le module <mark>Whisper</mark>Transcriber wrap WhisperKit derrière un protocol WhisperTranscribing pour permettre le mock en test…
+          </div>
+          <div class="context">
+            <span>YB</span><span class="sep">·</span><span>00:41:20</span><span class="sep">·</span><span>2 matches</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-footer">
+        <span class="status">
+          <span class="dot"></span>
+          Idle
+        </span>
+        <span style="font-family: var(--font-mono); font-size: 11px; color: var(--ink-3);">247 meetings</span>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <section class="main">
+
+      <header class="doc-header">
+        <div>
+          <div class="doc-breadcrumb">
+            <span>2026-07-31_15h10</span>
+            <span class="sep">·</span>
+            <span class="source-badge source-manual">Manual</span>
+            <span class="sep">·</span>
+            <span>2 speakers</span>
+          </div>
+          <h1 class="doc-title">Pipeline debug session</h1>
+          <div class="doc-subtitle">
+            <span>Vendredi 31 juillet · 15h10</span>
+            <span class="sep">·</span>
+            <span>12 min 04 s</span>
+            <div class="participants" aria-label="Participants">
+              <span class="avatar a1" title="Yvan">YB</span>
+              <span class="avatar a2" title="Sébastien">SM</span>
+            </div>
+          </div>
+        </div>
+        <div class="doc-actions">
+          <button class="pill-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            Speaker
+          </button>
+          <button class="pill-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M4 10h16"/></svg>
+            Chapters
+          </button>
+          <button class="pill-btn primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>
+            Regenerate notes
+          </button>
+        </div>
+      </header>
+
+      <div class="panels" id="panels">
+
+        <!-- Notes column (center, primary) -->
+        <div class="notes">
+          <div class="notes-tabs" role="tablist">
+            <button class="tab live" role="tab" aria-selected="false" title="Notes prises en direct, éditables même pendant l'enregistrement">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              Direct
+            </button>
+            <button class="tab" role="tab" aria-selected="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              Brief
+            </button>
+            <button class="tab" role="tab" aria-selected="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              Synthèse
+            </button>
+            <button class="tab" role="tab" aria-selected="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+              Détaillée
+            </button>
+            <div style="flex:1"></div>
+            <div class="notes-tools">
+              <div class="edit-status" id="editStatus" title="Modifications sauvegardées automatiquement">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Enregistré</span>
+              </div>
+            </div>
+          </div>
+          <!-- Banner shown when the file was edited after last generation -->
+          <div class="regen-banner" id="regenBanner" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <div class="regen-copy">
+              <strong>Cette note a été éditée depuis sa génération.</strong>
+              <span>Régénérer va écraser tes modifications.</span>
+            </div>
+            <button class="pill-btn" id="dismissBanner">Ignorer</button>
+            <button class="pill-btn primary" id="regenConfirm">Régénérer quand même</button>
+          </div>
+
+          <div class="notes-body" contenteditable="true" spellcheck="true">
+            <h1>Trois bugs qui rendaient le pipeline silencieux</h1>
+            <p class="lede">
+              Une session de debug déclenchée par un enregistrement qui semblait ne rien produire. Diagnostic, correctifs, et confirmation que le pipeline tournait bien — juste sans le dire.
+            </p>
+
+            <h2>Points clés</h2>
+            <ul>
+              <li>
+                <strong>Le pipeline n'était pas hangé.</strong>
+                La compilation Core ML de <em>whisper large-v3</em> prend 4 à 5 minutes au premier run à froid. Le sample CPU est trompeur : le Neural Engine bosse en dehors du profil user-space.
+              </li>
+              <li>
+                <strong>L'UI n'affichait jamais l'état "transcribing".</strong>
+                <code>uiState = .transcribing</code> était écrasé par <code>uiState = .idle</code> dans la foulée, dans le même bloc <code>toggleRecording</code>.
+              </li>
+              <li>
+                <strong>Les erreurs du pipeline étaient avalées.</strong>
+                Fire-and-forget <code>Task.detached</code> avec <code>catch { _ = error }</code> — aucune remontée vers l'UI ou vers l'utilisateur.
+              </li>
+            </ul>
+
+            <h2>Décisions</h2>
+            <ul>
+              <li>Ajout d'un callback <code>onPipelineFinished</code> sur <em>RecorderSession</em> pour surfacer succès et échec.</li>
+              <li>Timeout de 8 min sur <code>WhisperKit(cfg)</code> via <code>withThrowingTaskGroup</code>. Assez pour la compil, assez court pour catcher un vrai hang réseau.</li>
+              <li>L'UI reste bloquée en <code>.transcribing</code> jusqu'à la fin réelle du pipeline. Icône jaune ⌛ + label maintenus.</li>
+            </ul>
+
+            <h2>Actions</h2>
+            <div class="action-item">
+              <span class="check" contenteditable="false"></span>
+              <div>Ajouter un panneau "état pipeline" dans le menu bar (étape courante, ETA, bouton annuler).</div>
+              <span class="owner" contenteditable="false">YB</span>
+            </div>
+            <div class="action-item">
+              <span class="check" contenteditable="false" style="background: var(--accent); border-color: var(--accent);"></span>
+              <div style="text-decoration: line-through; color: var(--ink-3);">Fix des trois bugs identifiés (UI transcribing, erreurs avalées, timeout Whisper).</div>
+              <span class="owner" contenteditable="false">YB</span>
+            </div>
+            <div class="action-item">
+              <span class="check" contenteditable="false"></span>
+              <div>Reproduire la lenteur cold Core ML sur medium et small pour comparaison.</div>
+              <span class="owner" contenteditable="false">SM</span>
+            </div>
+
+            <div class="notes-footer" contenteditable="false">
+              <span>Généré · Claude Sonnet 4.6 · 3.2 s</span>
+              <span>2026-07-31 · 15:16</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="resizer" id="resizer" role="separator" aria-orientation="vertical" aria-label="Redimensionner notes / transcript" tabindex="0"></div>
+
+        <!-- Transcript column (right side) -->
+        <div class="transcript">
+          <div class="transcript-header">
+            <h4>Transcript</h4>
+            <div class="tools">
+              <button class="icon-btn" title="Copy" aria-label="Copy">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+              </button>
+              <button class="icon-btn" title="Export" aria-label="Export">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v13"/><polyline points="7 12 12 17 17 12"/><path d="M5 21h14"/></svg>
+              </button>
+              <button class="icon-btn" id="hidePanelBtn" title="Masquer le panneau transcript" aria-label="Masquer le panneau">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="turn" style="--i:0">
+            <div class="meta">00:00:04</div>
+            <div class="body">
+              <span class="speaker sp-yb"><span class="dot"></span>Yvan</span>
+              Bon, je viens de faire un enregistrement il y a trois minutes, mais ce n'est pas indiqué que la transcription est en cours. Je ne sais pas trop où ça en est.
+            </div>
+          </div>
+
+          <div class="turn" style="--i:1">
+            <div class="meta">00:00:23</div>
+            <div class="body">
+              <span class="speaker sp-sm"><span class="dot"></span>Sébastien</span>
+              Est-ce que le dossier <em>transcripts</em> est vide ? Regarde d'abord dans <em>~/Meetings/…/audio</em> si les WAV sont bien là.
+            </div>
+          </div>
+
+          <div class="turn" style="--i:2">
+            <div class="meta">00:01:11</div>
+            <div class="body">
+              <span class="speaker sp-yb"><span class="dot"></span>Yvan</span>
+              Les WAV sont là. Deux Mo chacun, mic et system. Le <mark class="hi">job.json</mark> dit que <mark class="hi">whisper_mic</mark> est <mark class="hi">in_progress</mark> depuis quatre minutes.
+            </div>
+          </div>
+
+          <div class="turn" style="--i:3">
+            <div class="meta">00:02:04</div>
+            <div class="body">
+              <span class="speaker sp-sm"><span class="dot"></span>Sébastien</span>
+              Ah, si tu vois zéro pourcent de CPU côté Onyx et rien dans les logs, c'est probablement la compilation Core ML au premier run. Elle peut prendre plusieurs minutes sur <em>large-v3</em>.
+            </div>
+          </div>
+
+          <div class="turn editable" style="--i:4">
+            <div class="meta">00:02:42</div>
+            <div class="body">
+              <span class="speaker sp-yb"><span class="dot"></span>Yvan</span>
+              Donc il faut au minimum surfacer l'état "transcribing" dans l'UI, et arrêter d'avaler les erreurs du pipeline. Sinon on ne saura jamais que ça a foiré.
+            </div>
+          </div>
+
+          <div class="turn" style="--i:5">
+            <div class="meta">00:03:35</div>
+            <div class="body">
+              <span class="speaker sp-sm"><span class="dot"></span>Sébastien</span>
+              Plus un timeout sur le <mark class="hi">WhisperKit init</mark>. Huit minutes semble raisonnable — assez pour couvrir la compil, court assez pour catcher un vrai hang.
+            </div>
+          </div>
+
+          <div class="turn" style="--i:6">
+            <div class="meta">00:04:20</div>
+            <div class="body">
+              <span class="speaker sp-yb"><span class="dot"></span>Yvan</span>
+              OK, trois fixes. Je les applique, on rebuild, on relance, et on verra bien.
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- FAB to bring the transcript panel back when hidden -->
+      <button class="show-panel-fab" id="showPanelBtn" title="Ré-afficher le transcript">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
+        Transcript
+      </button>
+
+      <!-- Audio scrubber -->
+      <div class="scrubber">
+        <button class="play-btn" aria-label="Play">
+          <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 20,12 6,20"/></svg>
+        </button>
+        <div class="track" aria-label="Waveform">
+          <div class="waveform" id="wave"></div>
+        </div>
+        <span class="time-label"><b>02:42</b> / 12:04</span>
+        <button class="speed-btn">1.0×</button>
+      </div>
+
+    </section>
+  </div>
+
+<script>
+  // Waveform fake bars
+  (function(){
+    const el = document.getElementById('wave');
+    const N = 220;
+    const active = Math.round(N * (162 / 724)); // playhead at ~2:42 of 12:04
+    let html = '';
+    for (let i = 0; i < N; i++) {
+      // deterministic pseudo-random height to keep it looking natural
+      const seed = Math.sin(i * 12.9898) * 43758.5453;
+      const r = seed - Math.floor(seed);
+      const h = 4 + Math.round(r * 20);
+      html += `<i class="${i < active ? 'active' : ''}" style="height:${h}px"></i>`;
+    }
+    el.innerHTML = html;
+  })();
+
+  // State switcher
+  document.querySelectorAll('.showcase-bar button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const state = btn.dataset.state;
+      document.body.dataset.state = state;
+      document.querySelectorAll('.showcase-bar button').forEach(b => {
+        b.setAttribute('aria-pressed', b === btn ? 'true' : 'false');
+      });
+      if (state === 'search') {
+        document.querySelector('.search-box input').focus();
+        document.querySelector('.search-box input').value = 'whisper hang';
+      } else {
+        document.querySelector('.search-box input').value = '';
+      }
+    });
+  });
+
+  // Notes tab switch (visual only)
+  document.querySelectorAll('.tab').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(x => x.setAttribute('aria-selected', 'false'));
+      t.setAttribute('aria-selected', 'true');
+    });
+  });
+
+  // Draggable resizer between notes and transcript
+  (function(){
+    const resizer = document.getElementById('resizer');
+    const panels  = document.getElementById('panels');
+    if (!resizer || !panels) return;
+
+    let dragging = false;
+    let startX = 0;
+    let startNotesW = 0;
+    let startTransW = 0;
+
+    // Compute pixel widths from the two flexible columns.
+    const measure = () => {
+      const cols = getComputedStyle(panels).gridTemplateColumns.split(' ').map(v => parseFloat(v));
+      // [notes, resizer, transcript]
+      return { notes: cols[0], trans: cols[2] };
+    };
+
+    resizer.addEventListener('mousedown', (e) => {
+      dragging = true;
+      startX = e.clientX;
+      const m = measure();
+      startNotesW = m.notes;
+      startTransW = m.trans;
+      resizer.classList.add('dragging');
+      document.body.classList.add('dragging-resizer');
+      e.preventDefault();
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!dragging) return;
+      const dx = e.clientX - startX;
+      // Enforce min widths so neither collapses.
+      const minNotes = 320, minTrans = 280;
+      let newNotes = startNotesW + dx;
+      let newTrans = startTransW - dx;
+      if (newNotes < minNotes) { newNotes = minNotes; newTrans = startNotesW + startTransW - minNotes; }
+      if (newTrans < minTrans) { newTrans = minTrans; newNotes = startNotesW + startTransW - minTrans; }
+      // Assign explicit pixel widths (no fr fallback while dragging).
+      panels.style.setProperty('--notes-w', newNotes + 'px');
+      panels.style.setProperty('--transcript-w', newTrans + 'px');
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (!dragging) return;
+      dragging = false;
+      resizer.classList.remove('dragging');
+      document.body.classList.remove('dragging-resizer');
+    });
+
+    // Keyboard resize (accessibility): arrow keys shift by 16px, shift+arrow by 64px.
+    resizer.addEventListener('keydown', (e) => {
+      const step = e.shiftKey ? 64 : 16;
+      const m = measure();
+      let notesW = m.notes, transW = m.trans;
+      if (e.key === 'ArrowLeft')  { notesW -= step; transW += step; }
+      else if (e.key === 'ArrowRight') { notesW += step; transW -= step; }
+      else return;
+      const minNotes = 320, minTrans = 280;
+      if (notesW < minNotes || transW < minTrans) return;
+      panels.style.setProperty('--notes-w', notesW + 'px');
+      panels.style.setProperty('--transcript-w', transW + 'px');
+      e.preventDefault();
+    });
+  })();
+
+  // Notes edit status + regeneration warning banner
+  (function(){
+    const notes   = document.querySelector('.notes-body[contenteditable="true"]');
+    const status  = document.getElementById('editStatus');
+    const banner  = document.getElementById('regenBanner');
+    const dismiss = document.getElementById('dismissBanner');
+    const regen   = document.getElementById('regenConfirm');
+    if (!notes || !status) return;
+
+    const label = status.querySelector('span');
+    // Snapshot the initial (AI-generated) markup so "Regenerate" can restore it.
+    const generatedSnapshot = notes.innerHTML;
+    let dirty = false;
+    let t = null;
+
+    const setSaved = () => {
+      status.classList.remove('saving');
+      status.classList.add('saved');
+      label.textContent = 'Enregistré';
+    };
+    setSaved();
+
+    notes.addEventListener('input', () => {
+      dirty = true;
+      banner.hidden = false;
+      status.classList.remove('saved');
+      status.classList.add('saving');
+      label.textContent = 'Enregistrement…';
+      clearTimeout(t);
+      t = setTimeout(setSaved, 700);
+    });
+
+    dismiss.addEventListener('click', () => banner.hidden = true);
+    regen.addEventListener('click', () => {
+      notes.innerHTML = generatedSnapshot;
+      dirty = false;
+      banner.hidden = true;
+      setSaved();
+    });
+  })();
+
+  // Hide/show transcript panel
+  (function(){
+    const hideBtn = document.getElementById('hidePanelBtn');
+    const showBtn = document.getElementById('showPanelBtn');
+    if (!hideBtn || !showBtn) return;
+    hideBtn.addEventListener('click', () => document.body.classList.add('panel-hidden'));
+    showBtn.addEventListener('click', () => document.body.classList.remove('panel-hidden'));
+  })();
+</script>
+</body>
+</html>

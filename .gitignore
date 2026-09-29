@@ -1,0 +1,14 @@
+.build/
+.swiftpm/
+DerivedData/
+*.xcodeproj/
+Onyx.app/
+build/
+dist/
+*.dmg
+*.zip
+appcast.xml
+.DS_Store
+Vendor/sherpa-onnx/
+Sources/CSherpaOnnx/include/c-api.h
+

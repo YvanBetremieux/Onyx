@@ -1,0 +1,1 @@
+/* Placeholder translation unit so SwiftPM treats CSherpaOnnx as a compilable C target. */

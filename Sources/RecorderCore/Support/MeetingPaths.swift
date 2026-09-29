@@ -41,4 +41,14 @@ public extension MeetingPaths {
     func notesFile(_ level: NoteLevel) -> URL {
         notesDir.appendingPathComponent("\(level.rawValue).md")
     }
+
+    /// User-editable live notes taken during the meeting. Created empty by
+    /// `MeetingStorage.createMeeting`, never overwritten by regeneration,
+    /// injected into the Claude prompt during the `.notes` pipeline step.
+    var liveNotes: URL { notesDir.appendingPathComponent("live.md") }
+
+    /// Pre-computed waveform peaks (Codable `[Float]`) written at the pipeline
+    /// `.render` step. Falls back to on-the-fly generation in the viewer if
+    /// absent (meetings from before chantier 3).
+    var waveformJson: URL { audio.appendingPathComponent("waveform.json") }
 }

@@ -35,7 +35,8 @@ public final class CalendarWatcher {
     public func matches(matcher: CalendarMatcher) -> AsyncStream<MatchedEvent> {
         AsyncStream { continuation in
             let task = Task.detached { [horizonMinutes, pollSeconds, store] in
-                var armed = Set<String>()
+                // key → endDate timestamp (for purge logic)
+                var armed = [String: Int]()
                 while !Task.isCancelled {
                     let now = Date()
                     let horizon = now.addingTimeInterval(horizonMinutes * 60)
@@ -46,7 +47,10 @@ public final class CalendarWatcher {
                     for ekEvent in events {
                         guard let id = ekEvent.eventIdentifier else { continue }
                         let key = "\(id)|\(Int(ekEvent.startDate.timeIntervalSince1970))"
-                        if armed.contains(key) { continue }
+                        if armed[key] != nil { continue }
+                        // Lead-time guard: don't fire more than 60s before start
+                        let leadTime = ekEvent.startDate.timeIntervalSinceNow
+                        guard leadTime <= 60 else { continue }
                         let input = CalendarEventInput(
                             id: id,
                             title: ekEvent.title ?? "",
@@ -55,18 +59,17 @@ public final class CalendarWatcher {
                             notes: ekEvent.notes,
                             location: ekEvent.location,
                             startDate: ekEvent.startDate,
-                            endDate: ekEvent.endDate
+                            endDate: ekEvent.endDate,
+                            isAllDay: ekEvent.isAllDay
                         )
                         if let matched = matcher.match(input) {
                             continuation.yield(matched)
-                            armed.insert(key)
+                            armed[key] = Int(ekEvent.endDate.timeIntervalSince1970)
                         }
                     }
+                    // Purge entries where endDate + 300s has passed
                     let cutoff = Int(Date().addingTimeInterval(-300).timeIntervalSince1970)
-                    armed = armed.filter { key in
-                        guard let ts = Int(key.split(separator: "|").last ?? "") else { return false }
-                        return ts >= cutoff
-                    }
+                    armed = armed.filter { _, endTs in endTs >= cutoff }
                     try? await Task.sleep(nanoseconds: UInt64(pollSeconds * 1_000_000_000))
                 }
                 continuation.finish()

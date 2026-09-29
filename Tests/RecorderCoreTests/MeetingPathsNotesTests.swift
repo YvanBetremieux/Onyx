@@ -24,6 +24,8 @@ final class MeetingPathsNotesTests: XCTestCase {
     }
 
     func testNoteLevelAllCases() {
-        XCTAssertEqual(NoteLevel.allCases.count, 3)
+        // 3 generatable levels + `.live` (user-authored, chantier 3).
+        XCTAssertEqual(NoteLevel.allCases.count, 4)
+        XCTAssertEqual(NoteLevel.generatable.count, 3)
     }
 }

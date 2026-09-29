@@ -26,7 +26,7 @@ struct BrowserAutomationView: View {
             HStack {
                 Spacer()
                 Button("Continue") { onDone() }
-                    .keyboardShortcut(.defaultAction)
+                    .buttonStyle(.borderedProminent)
             }
         }
         .padding(30)
@@ -40,22 +40,30 @@ struct BrowserAutomationView: View {
             "company.thebrowser.Browser",
             "com.brave.Browser",
         ]
-        for b in bundles {
-            let script = "tell application id \"\(b)\" to return name"
-            let proc = Process()
-            proc.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-            proc.arguments = ["-e", script]
-            let out = Pipe(); proc.standardOutput = out; proc.standardError = out
-            do {
-                try proc.run(); proc.waitUntilExit()
-            } catch {
-                results.append("\(b): \(error.localizedDescription)")
-                continue
+        // Run osascript calls off the main thread to avoid beachball.
+        Task.detached {
+            var lines: [String] = []
+            for b in bundles {
+                let script = "tell application id \"\(b)\" to return name"
+                let proc = Process()
+                proc.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+                proc.arguments = ["-e", script]
+                let out = Pipe(); proc.standardOutput = out; proc.standardError = out
+                do {
+                    try proc.run(); proc.waitUntilExit()
+                } catch {
+                    lines.append("\(b): \(error.localizedDescription)")
+                    continue
+                }
+                let data = (try? out.fileHandleForReading.readToEnd()) ?? Data()
+                let s = String(data: data, encoding: .utf8)?
+                    .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                lines.append("\(b): \(proc.terminationStatus == 0 ? "OK — \(s)" : "denied/not installed")")
             }
-            let data = (try? out.fileHandleForReading.readToEnd()) ?? Data()
-            let s = String(data: data, encoding: .utf8)?
-                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            results.append("\(b): \(proc.terminationStatus == 0 ? "OK — \(s)" : "denied/not installed")")
+            let snapshot = lines
+            await MainActor.run {
+                results = snapshot
+            }
         }
     }
 }

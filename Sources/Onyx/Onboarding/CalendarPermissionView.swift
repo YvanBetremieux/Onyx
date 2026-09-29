@@ -26,7 +26,7 @@ struct CalendarPermissionView: View {
                         }
                     }
                 }
-                .keyboardShortcut(.defaultAction)
+                .buttonStyle(.borderedProminent)
                 .disabled(requesting)
             }
         }

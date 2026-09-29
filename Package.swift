@@ -61,5 +61,6 @@ let package = Package(
             dependencies: ["RecorderCore"]
         ),
         .testTarget(name: "RecorderCoreTests", dependencies: ["RecorderCore"]),
+        .testTarget(name: "OnyxTests", dependencies: ["Onyx"]),
     ]
 )

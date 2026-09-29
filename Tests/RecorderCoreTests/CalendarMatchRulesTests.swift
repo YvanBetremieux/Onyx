@@ -9,10 +9,12 @@ final class CalendarMatchRulesTests: XCTestCase {
                        location: String? = nil,
                        start: Date = .init(timeIntervalSince1970: 1_700_000_000),
                        end: Date = .init(timeIntervalSince1970: 1_700_003_600),
-                       id: String = "e-1") -> CalendarEventInput {
+                       id: String = "e-1",
+                       isAllDay: Bool = false) -> CalendarEventInput {
         CalendarEventInput(id: id, title: title, calendarId: calendarId,
                            attendeeCount: attendeeCount, notes: notes,
-                           location: location, startDate: start, endDate: end)
+                           location: location, startDate: start, endDate: end,
+                           isAllDay: isAllDay)
     }
 
     func testMatchesEventInWhitelistWithMeetLinkInNotes() {
@@ -61,6 +63,12 @@ final class CalendarMatchRulesTests: XCTestCase {
         let m = CalendarMatcher(whitelistedCalendarIds: ["cal-work"])
         let ev = input(title: "Standup [NO-REC]",
                        notes: "https://meet.google.com/aaa-bbbb-ccc")
+        XCTAssertNil(m.match(ev))
+    }
+
+    func testRejectsAllDayEvent() {
+        let m = CalendarMatcher(whitelistedCalendarIds: ["cal-work"])
+        let ev = input(notes: "https://meet.google.com/aaa-bbbb-ccc", isAllDay: true)
         XCTAssertNil(m.match(ev))
     }
 }

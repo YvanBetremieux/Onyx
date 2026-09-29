@@ -9,7 +9,9 @@ public struct OnboardingWindow: View {
              browserAutomation, claudeBinary,
              done
     }
-    @State private var step: Step = .welcome
+    @State private var step: Step
+    @State private var micDenied: Bool = false
+    @State private var screenGranted: Bool = false
     let onCompleted: () -> Void
     let settings: SettingsStore
 
@@ -17,6 +19,9 @@ public struct OnboardingWindow: View {
                 settings: SettingsStore = SettingsStore()) {
         self.onCompleted = onCompleted
         self.settings = settings
+        // Fast-forward past Chantier 1 steps if V1 is already done.
+        let v1Done = UserDefaults.standard.bool(forKey: "onboardingDone")
+        _step = State(initialValue: v1Done ? .calendarPermission : .welcome)
     }
 
     public var body: some View {
@@ -28,19 +33,56 @@ public struct OnboardingWindow: View {
                 Button("Continue") { step = .mic }
             case .mic:
                 Text("Microphone access").font(.title)
-                Button("Grant microphone") {
-                    Task {
-                        _ = await PermissionsChecker.micGranted()
-                        step = .screen
+                if micDenied {
+                    Text("Microphone access was denied. Please allow it in System Settings.")
+                        .foregroundColor(.red).multilineTextAlignment(.center)
+                    Button("Open System Settings") {
+                        NSWorkspace.shared.open(
+                            URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone")!
+                        )
+                    }
+                    Button("Re-check") {
+                        Task {
+                            let granted = await PermissionsChecker.micGranted()
+                            if granted {
+                                micDenied = false
+                                step = .screen
+                            }
+                        }
+                    }
+                } else {
+                    Button("Grant microphone") {
+                        Task {
+                            let granted = await PermissionsChecker.micGranted()
+                            if granted {
+                                step = .screen
+                            } else {
+                                micDenied = true
+                            }
+                        }
                     }
                 }
             case .screen:
                 Text("Screen recording").font(.title)
                 Text("Required to capture system audio (Zoom, Meet, Huddle…)")
                     .foregroundColor(.secondary).multilineTextAlignment(.center)
-                Button("Grant screen recording") {
-                    PermissionsChecker.requestScreenRecording()
-                    step = .models
+                if screenGranted {
+                    Text("Screen recording is enabled.").foregroundColor(.green)
+                    Button("Continue") { step = .models }
+                        .buttonStyle(.borderedProminent)
+                } else {
+                    Button("Grant screen recording") {
+                        PermissionsChecker.requestScreenRecording()
+                        // Re-check immediately; user may have already granted before
+                        screenGranted = PermissionsChecker.screenRecordingGranted()
+                        if screenGranted { step = .models }
+                    }
+                    Button("Re-check after granting in Settings") {
+                        screenGranted = PermissionsChecker.screenRecordingGranted()
+                        if screenGranted { step = .models }
+                    }
+                    Button("Skip") { step = .models }
+                        .foregroundColor(.secondary)
                 }
             case .models:
                 ModelDownloadView { step = .calendarPermission }

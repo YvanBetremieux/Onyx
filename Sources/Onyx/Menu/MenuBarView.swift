@@ -7,21 +7,39 @@ struct MenuBarView: View {
 
     var body: some View {
         Group {
+            // Visible seulement en cas de problème : rien ne s'affiche quand
+            // tout va bien.
+            if app.claudeAuthStatus.isDisconnected {
+                Button("⚠ Claude déconnecté — se reconnecter…") {
+                    app.showSettings()
+                }
+                Divider()
+            }
             switch app.uiState {
             case .idle:
-                Button("Start recording  ⌘⇧R") { app.toggleRecording() }
+                Button("Start recording") { app.toggleRecording() }
             case .recording:
                 Text("Recording \(app.currentSlug ?? "")")
-                Button("Stop recording  ⌘⇧R") { app.toggleRecording() }
+                Button("Stop recording") { app.toggleRecording() }
             case .transcribing:
                 Text("Transcribing…")
-                Button("Start new recording  ⌘⇧R") { app.toggleRecording() }
+                Button("Start new recording") { app.toggleRecording() }
+            }
+            Divider()
+            // No key equivalents on any menu item: Onyx is click-only.
+            Button("Open viewer…") { app.viewerController.show() }
+            if app.uiState == .recording {
+                // Routed through AppState, not straight to the viewer: only
+                // AppState can name the meeting being recorded, and the viewer
+                // must never guess (it would target the last-selected meeting
+                // and overwrite its live notes).
+                Button("Open live notes") { app.openLiveNotes() }
             }
             Divider()
             Button("Open meetings folder") {
                 NSWorkspace.shared.open(app.settings.meetingsFolder)
             }
-            Button("Settings…") { openSettingsWindow() }
+            Button("Settings…") { app.showSettings() }
             Button("Rescan meetings") {
                 let storage = app.storage
                 let indexer = app.indexer
@@ -45,7 +63,10 @@ struct MenuBarView: View {
                                 NSWorkspace.shared.open(tr)
                             }
                             Menu("Regenerate notes as") {
-                                ForEach(NoteLevel.allCases, id: \.self) { level in
+                                // `generatable`, not `allCases`: `.live` is the
+                                // user's own live.md and must never be a
+                                // regeneration target.
+                                ForEach(NoteLevel.generatable, id: \.self) { level in
                                     Button(level.rawValue.capitalized) {
                                         app.regenerateNotes(for: m.id, level: level)
                                     }
@@ -67,8 +88,4 @@ struct MenuBarView: View {
         let title = m.title?.isEmpty == false ? m.title! : "Untitled"
         return "\(time) — \(title)"
     }
-}
-
-@MainActor func openSettingsWindow() {
-    NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
 }

@@ -25,12 +25,14 @@ public struct CalendarEventInput: Sendable, Equatable {
     public let location: String?
     public let startDate: Date
     public let endDate: Date
+    public let isAllDay: Bool
 
     public init(id: String, title: String, calendarId: String,
                 attendeeCount: Int, notes: String?, location: String?,
-                startDate: Date, endDate: Date) {
+                startDate: Date, endDate: Date, isAllDay: Bool = false) {
         self.id = id; self.title = title; self.calendarId = calendarId
         self.attendeeCount = attendeeCount; self.notes = notes
         self.location = location; self.startDate = startDate; self.endDate = endDate
+        self.isAllDay = isAllDay
     }
 }

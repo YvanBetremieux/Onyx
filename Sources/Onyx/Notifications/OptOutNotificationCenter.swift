@@ -58,6 +58,26 @@ public final class OptOutNotificationCenter: NSObject, @preconcurrency UNUserNot
         UNUserNotificationCenter.current().add(req)
     }
 
+    /// Déconnexion du CLI Claude. Déclenchée par une *transition* de statut,
+    /// donc une seule fois : pendant l'incident du 2026-09-07, onze réunions
+    /// ont échoué d'affilée et onze notifications auraient été du bruit.
+    public func showClaudeDisconnected(_ failure: ClaudeAuthFailure) {
+        configureIfNeeded()
+        let content = UNMutableNotificationContent()
+        content.title = "Claude déconnecté"
+        content.body = failure == .sessionExpired
+            ? "La session Claude a expiré : les résumés de réunion ne sont plus "
+              + "générés. Reconnecte-toi dans les Réglages d'Onyx."
+            : "Claude n'est pas connecté : les résumés de réunion ne sont plus "
+              + "générés. Reconnecte-toi dans les Réglages d'Onyx."
+        // Identifiant FIXE (pas un UUID) : une nouvelle notification remplace la
+        // précédente au lieu d'empiler des doublons dans le centre de
+        // notifications.
+        let req = UNNotificationRequest(identifier: "onyx.claude.disconnected",
+                                        content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(req)
+    }
+
     public func showNotesFailed(slug: String) {
         let content = UNMutableNotificationContent()
         content.title = "Notes generation failed"

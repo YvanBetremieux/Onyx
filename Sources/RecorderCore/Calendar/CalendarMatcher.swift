@@ -14,6 +14,7 @@ public struct CalendarMatcher: Sendable {
     }()
 
     public func match(_ ev: CalendarEventInput) -> MatchedEvent? {
+        guard !ev.isAllDay else { return nil }
         guard whitelistedCalendarIds.contains(ev.calendarId) else { return nil }
         guard ev.attendeeCount > 1 else { return nil }
         if ev.title.range(of: "[no-rec]", options: .caseInsensitive) != nil { return nil }

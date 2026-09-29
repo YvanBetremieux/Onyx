@@ -13,11 +13,26 @@ public final class MeetingStorage {
 
     public func createMeeting(startedAt: Date, timeZone: TimeZone = .current) throws -> MeetingPaths {
         try fileManager.createDirectory(at: root, withIntermediateDirectories: true)
-        let slug = MeetingPaths.slug(for: startedAt, timeZone: timeZone)
+        // Slug granularity is 1 minute → collision possible (stop + restart in same
+        // minute). Suffix _2, _3… instead of overwriting a running meeting's files.
+        let base = MeetingPaths.slug(for: startedAt, timeZone: timeZone)
+        var slug = base
+        var n = 2
+        while fileManager.fileExists(atPath: root.appendingPathComponent(slug).path) {
+            slug = "\(base)_\(n)"
+            n += 1
+        }
         let paths = MeetingPaths(root: root, slug: slug)
         try fileManager.createDirectory(at: paths.root, withIntermediateDirectories: true)
         try fileManager.createDirectory(at: paths.audio, withIntermediateDirectories: true)
         try fileManager.createDirectory(at: paths.transcripts, withIntermediateDirectories: true)
+        // Create notes/ dir + empty live.md immediately so the viewer can let
+        // the user type notes during the meeting. Never overwritten by the
+        // pipeline; injected into the Claude prompt at generation time.
+        try fileManager.createDirectory(at: paths.notesDir, withIntermediateDirectories: true)
+        if !fileManager.fileExists(atPath: paths.liveNotes.path) {
+            try Data().write(to: paths.liveNotes, options: .atomic)
+        }
 
         let meta = MeetingMetadata(
             id: slug, startedAt: startedAt, endedAt: nil, durationSeconds: nil,

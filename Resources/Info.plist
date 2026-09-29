@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleIdentifier</key>            <string>com.yvanbetremieux.onyx</string>
+  <key>CFBundleName</key>                  <string>Onyx</string>
+  <key>CFBundleDisplayName</key>           <string>Onyx</string>
+  <key>CFBundleExecutable</key>            <string>Onyx</string>
+  <key>CFBundlePackageType</key>           <string>APPL</string>
+  <key>CFBundleShortVersionString</key>    <string>0.2.0</string>
+  <key>CFBundleVersion</key>               <string>0.2.0</string>
+  <key>LSMinimumSystemVersion</key>        <string>13.0</string>
+  <key>CFBundleIconFile</key>              <string>AppIcon</string>
+  <!-- Menu-bar app: starts without a Dock icon. AppState.refreshDockIcon()
+       flips the activation policy to .regular while the viewer or settings
+       window is open, so the app behaves like a normal app when windowed. -->
+  <key>LSUIElement</key>                   <true/>
+  <key>NSMicrophoneUsageDescription</key>
+    <string>Onyx records your microphone during meetings you start manually.</string>
+  <key>NSScreenCaptureDescription</key>
+    <string>Onyx captures system audio so meeting participants are transcribed.</string>
+  <key>NSCalendarsUsageDescription</key>
+    <string>Onyx reads your calendar to auto-start recording when a meeting event begins.</string>
+  <key>NSCalendarsFullAccessUsageDescription</key>
+    <string>Onyx reads your calendar to auto-start recording when a meeting event begins.</string>
+  <key>NSAppleEventsUsageDescription</key>
+    <string>Onyx observes browser tabs (via AppleScript) to detect when a Google Meet call is active.</string>
+  <key>SUFeedURL</key>
+    <string>https://example.invalid/appcast.xml</string>
+  <key>SUEnableInstallerLauncherService</key><false/>
+</dict>
+</plist>

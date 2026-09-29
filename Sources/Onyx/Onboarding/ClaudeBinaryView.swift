@@ -22,7 +22,7 @@ struct ClaudeBinaryView: View {
             HStack {
                 Spacer()
                 Button("Continue") { onDone() }
-                    .keyboardShortcut(.defaultAction)
+                    .buttonStyle(.borderedProminent)
             }
         }
         .padding(30)
@@ -42,25 +42,31 @@ struct ClaudeBinaryView: View {
             settings.claudeBinaryPath = c.path
             return
         }
-        // Login-shell PATH lookup as fallback.
-        let proc = Process()
-        proc.executableURL = URL(fileURLWithPath: "/bin/sh")
-        proc.arguments = ["-lc", "which claude"]
-        let out = Pipe(); proc.standardOutput = out; proc.standardError = Pipe()
-        do {
-            try proc.run(); proc.waitUntilExit()
-        } catch {
-            detected = "Claude not found — auto notes disabled. Set manually later in Settings."
-            return
-        }
-        let data = (try? out.fileHandleForReading.readToEnd()) ?? Data()
-        let s = String(data: data, encoding: .utf8)?
-            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        if proc.terminationStatus == 0, !s.isEmpty {
-            detected = "Found via shell: \(s)"
-            settings.claudeBinaryPath = s
-        } else {
-            detected = "Claude not found — auto notes disabled. Set manually later in Settings."
+        // Login-shell PATH lookup as fallback — run off main thread to avoid beachball.
+        Task.detached {
+            let proc = Process()
+            proc.executableURL = URL(fileURLWithPath: "/bin/sh")
+            proc.arguments = ["-lc", "which claude"]
+            let out = Pipe(); proc.standardOutput = out; proc.standardError = Pipe()
+            do {
+                try proc.run(); proc.waitUntilExit()
+            } catch {
+                await MainActor.run {
+                    detected = "Claude not found — auto notes disabled. Set manually later in Settings."
+                }
+                return
+            }
+            let data = (try? out.fileHandleForReading.readToEnd()) ?? Data()
+            let s = String(data: data, encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            await MainActor.run {
+                if proc.terminationStatus == 0, !s.isEmpty {
+                    detected = "Found via shell: \(s)"
+                    settings.claudeBinaryPath = s
+                } else {
+                    detected = "Claude not found — auto notes disabled. Set manually later in Settings."
+                }
+            }
         }
     }
 }
