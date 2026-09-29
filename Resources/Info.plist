@@ -26,8 +26,12 @@
     <string>Onyx reads your calendar to auto-start recording when a meeting event begins.</string>
   <key>NSAppleEventsUsageDescription</key>
     <string>Onyx observes browser tabs (via AppleScript) to detect when a Google Meet call is active.</string>
+  <!-- Toujours la release la plus récente : l'appcast est un asset de chaque
+       release publiée par .github/workflows/release.yml. -->
   <key>SUFeedURL</key>
-    <string>https://example.invalid/appcast.xml</string>
+    <string>https://github.com/YvanBetremieux/Onyx/releases/latest/download/appcast.xml</string>
+  <key>SUPublicEDKey</key>
+    <string>OeqxqASdmFQKzfPuS0FgyJ/Y/V4H+DK+HHGqFKr/mIY=</string>
   <key>SUEnableInstallerLauncherService</key><false/>
 </dict>
 </plist>
