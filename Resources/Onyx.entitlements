@@ -5,6 +5,9 @@
 <dict>
   <key>com.apple.security.device.audio-input</key>       <true/>
   <key>com.apple.security.device.microphone</key>        <true/>
+  <!-- Hardened runtime : sans cet entitlement, requestFullAccessToEvents
+       échoue en silence (aucun dialogue, statut qui reste notDetermined). -->
+  <key>com.apple.security.personal-information.calendars</key> <true/>
   <!--
     Local ad-hoc / self-signed builds cannot satisfy hardened-runtime library
     validation for embedded 3rd-party frameworks (Sparkle) because there is

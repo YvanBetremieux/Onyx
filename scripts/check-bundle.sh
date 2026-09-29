@@ -19,4 +19,10 @@ for lib in libsherpa-onnx-c-api.dylib libonnxruntime.dylib; do
 done
 [ -d "$APP/Contents/Frameworks/Sparkle.framework" ] || fail "Sparkle.framework manquant"
 codesign --verify --strict "$APP" || fail "signature invalide"
+# Hardened runtime : sans ces entitlements, macOS refuse en silence (aucun
+# dialogue) l'accès correspondant — c'est arrivé pour les calendriers.
+ENTITLEMENTS=$(codesign -d --entitlements :- "$APP" 2>/dev/null)
+for e in com.apple.security.device.audio-input com.apple.security.personal-information.calendars; do
+    grep -q "<key>$e</key>" <<<"$ENTITLEMENTS" || fail "entitlement manquant : $e"
+done
 echo "check-bundle: OK ($got_v / $got_b)"
