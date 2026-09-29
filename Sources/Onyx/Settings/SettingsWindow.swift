@@ -15,6 +15,8 @@ struct SettingsWindow: View {
     @State private var claudeTesting = false
     @State private var claudeDetecting = false
     @State private var availableCalendars: [EKCalendar] = []
+    @State private var calendarAccess: CalendarAccess = CalendarAccessFlow.currentStatus()
+    @State private var calendarRequesting = false
 
     /// Install state of each Whisper variant, keyed by asset id.
     enum ModelRowState: Equatable {
@@ -35,6 +37,9 @@ struct SettingsWindow: View {
         }
         .frame(width: 560, height: 460)
         .onAppear { loadCalendars(); refreshModelStates() }
+        // Retour dans Onyx (p. ex. depuis Réglages Système) : l'accès a pu changer.
+        .onReceive(NotificationCenter.default.publisher(
+            for: NSApplication.didBecomeActiveNotification)) { _ in loadCalendars() }
     }
 
     // MARK: - Tabs
@@ -81,8 +86,17 @@ struct SettingsWindow: View {
         VStack(alignment: .leading, spacing: 12) {
             Toggle("Enable auto-trigger from calendar", isOn: $settings.autoTriggerEnabled)
             Text("Calendars to watch:").font(.headline)
+            HStack {
+                Text(calendarAccessLabel).font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                Button(calendarRequesting ? "Demande en cours…"
+                                          : "Autoriser l'accès et détecter les calendriers") {
+                    requestCalendarAccess()
+                }
+                .disabled(calendarRequesting)
+            }
             if availableCalendars.isEmpty {
-                Text("No calendars available. Grant calendar access in onboarding or System Settings > Privacy > Calendars.")
+                Text("Aucun calendrier à afficher.")
                     .foregroundStyle(.secondary)
                     .font(.caption)
             } else {
@@ -334,8 +348,32 @@ struct SettingsWindow: View {
     }
 
     private func loadCalendars() {
+        calendarAccess = CalendarAccessFlow.currentStatus()
         // Best-effort — returns empty if permission not granted, which is fine.
         availableCalendars = EKEventStore().calendars(for: .event)
+    }
+
+    private var calendarAccessLabel: String {
+        switch calendarAccess {
+        case .granted:
+            return availableCalendars.isEmpty
+                ? "Accès accordé, mais aucun calendrier sur ce Mac (comptes : Réglages Système → Comptes internet)."
+                : "Accès aux calendriers accordé."
+        case .notDetermined: return "Onyx n'a pas encore demandé l'accès aux calendriers."
+        case .denied: return "Accès aux calendriers refusé."
+        }
+    }
+
+    /// Redemande l'accès — y compris après un refus, en effaçant d'abord la
+    /// décision enregistrée (voir `CalendarAccessFlow`) — puis recharge la liste.
+    private func requestCalendarAccess() {
+        calendarRequesting = true
+        let bundleId = Bundle.main.bundleIdentifier ?? "com.yvanbetremieux.onyx"
+        Task {
+            _ = await CalendarAccessFlow.live(bundleIdentifier: bundleId).ensureAccess()
+            loadCalendars()
+            calendarRequesting = false
+        }
     }
 
     /// Cherche le binaire (chemins connus puis PATH du shell de l'utilisateur).
