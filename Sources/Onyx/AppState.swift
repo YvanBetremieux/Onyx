@@ -38,6 +38,9 @@ public final class AppState: ObservableObject {
     private var catchUpInFlight = false
 
     public let settings = SettingsStore()
+    /// Sparkle. Porté ici (et non par `OnyxApp`) pour que le menu ET la fenêtre
+    /// de réglages — créée par `showSettings()` — puissent lancer une vérification.
+    public let updater = UpdaterController(startAutomatically: true)
     public let storage: MeetingStorage
     public let indexer: MeetingIndexer
     public let calendarWatcher: CalendarWatcher
@@ -408,6 +411,24 @@ public final class AppState: ObservableObject {
         guard NSApp.activationPolicy() != target else { return }
         NSApp.setActivationPolicy(target)
         if anyWindow { NSApp.activate(ignoringOtherApps: true) }
+    }
+
+    // MARK: - Updates
+
+    /// Vérification immédiate, avec la fenêtre Sparkle (« à jour » ou « nouvelle
+    /// version »). App de barre de menus : sans `activate`, cette fenêtre
+    /// s'ouvrirait derrière l'app au premier plan.
+    public func checkForUpdates() {
+        NSApp.activate(ignoringOtherApps: true)
+        updater.checkNow()
+    }
+
+    /// « 0.2.3 (build 3) », lu dans le bundle en cours d'exécution.
+    public var installedVersion: String {
+        let info = Bundle.main.infoDictionary
+        let version = info?["CFBundleShortVersionString"] as? String ?? "?"
+        let build = info?["CFBundleVersion"] as? String ?? "?"
+        return "\(version) (build \(build))"
     }
 
     // MARK: - Settings window

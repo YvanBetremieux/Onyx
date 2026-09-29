@@ -40,6 +40,7 @@ struct MenuBarView: View {
                 NSWorkspace.shared.open(app.settings.meetingsFolder)
             }
             Button("Settings…") { app.showSettings() }
+            Button("Rechercher des mises à jour…") { app.checkForUpdates() }
             Button("Rescan meetings") {
                 let storage = app.storage
                 let indexer = app.indexer

@@ -70,6 +70,8 @@ struct SettingsWindow: View {
             }
             Section("Updates") {
                 Toggle("Check for updates automatically", isOn: $settings.autoUpdateEnabled)
+                LabeledContent("Version installée", value: app.installedVersion)
+                Button("Rechercher des mises à jour…") { app.checkForUpdates() }
             }
         }
         .padding(16)

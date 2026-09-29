@@ -5,7 +5,6 @@ import RecorderCore
 @main
 struct OnyxApp: App {
     @StateObject private var appState = AppState()
-    @StateObject private var updater = UpdaterController(startAutomatically: true)
 
     init() {
         // Trigger onboarding if either Chantier 1 (onboardingDone) or Chantier 2
