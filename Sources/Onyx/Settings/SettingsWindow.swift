@@ -13,6 +13,7 @@ struct SettingsWindow: View {
 
     @State private var claudeTestResult: String = ""
     @State private var claudeTesting = false
+    @State private var claudeDetecting = false
     @State private var availableCalendars: [EKCalendar] = []
 
     /// Install state of each Whisper variant, keyed by asset id.
@@ -165,8 +166,10 @@ struct SettingsWindow: View {
                     // L'ancien « Test » ne lançait que `--version`, qui réussit
                     // même déconnecté : c'est ce faux positif qui a laissé
                     // l'incident du 2026-09-07 passer inaperçu deux jours.
+                    Button(claudeDetecting ? "Recherche…" : "Auto-détecter") { detectClaude() }
+                        .disabled(claudeDetecting || claudeTesting)
                     Button(claudeTesting ? "Test…" : "Tester") { testClaude() }
-                        .disabled(claudeTesting)
+                        .disabled(claudeTesting || claudeDetecting)
                 }
                 if !claudeTestResult.isEmpty {
                     Text(claudeTestResult).font(.caption).foregroundStyle(.secondary)
@@ -331,6 +334,25 @@ struct SettingsWindow: View {
     private func loadCalendars() {
         // Best-effort — returns empty if permission not granted, which is fine.
         availableCalendars = EKEventStore().calendars(for: .event)
+    }
+
+    /// Cherche le binaire (chemins connus puis PATH du shell de l'utilisateur).
+    /// Trouvé → on remplit le champ et on enchaîne sur le test complet, pour
+    /// que le résultat affiché dise aussi si la connexion Claude est bonne.
+    private func detectClaude() {
+        claudeDetecting = true
+        claudeTestResult = "Recherche du binaire Claude…"
+        Task {
+            let found = await ClaudeBinaryLocator().locate()
+            claudeDetecting = false
+            guard let found else {
+                claudeTestResult = "Claude introuvable — colle le chemin manuellement "
+                                 + "(`which claude` dans un terminal)."
+                return
+            }
+            settings.claudeBinaryPath = found.path
+            testClaude()
+        }
     }
 
     /// Vérifie d'abord que le binaire répond (`--version`), puis que
