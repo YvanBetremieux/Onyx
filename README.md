@@ -41,7 +41,13 @@ cd Onyx
 scripts/fetch-sherpa.sh    # télécharge les dylibs sherpa-onnx dans Vendor/ + le header c-api.h
 scripts/setup-cert.sh      # crée l'identité de signature locale "Onyx Local" dans le trousseau
 scripts/build-app.sh       # build release + bundle + signature → dist/Onyx.app
+git config core.hooksPath .githooks   # hook pre-commit : bloque un commit contenant un secret
 ```
+
+Le repo est public : aucun secret ne doit y entrer. Trois garde-fous : le hook pre-commit
+local (gitleaks sur l'index), la push protection de GitHub (refuse un push contenant un
+token connu), et le workflow `Secrets` (gitleaks sur tout l'historique à chaque push et
+chaque semaine, également exécuté avant chaque release). Scan manuel : `scripts/scan-secrets.sh`.
 
 Le repo est privé : le clone suppose d'être authentifié sur le compte `YvanBetremieux`.
 En SSH direct : `git clone git@github.com:YvanBetremieux/Onyx.git` (nécessite que la clé SSH

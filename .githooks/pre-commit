@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Bloque le commit si l'index contient un secret. Activé par :
+#   git config core.hooksPath .githooks
+exec "$(git rev-parse --show-toplevel)/scripts/scan-secrets.sh" --staged
