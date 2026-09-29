@@ -6,11 +6,25 @@ APP_NAME="Onyx"
 BUNDLE_ID="com.yvanbetremieux.onyx"
 CERT_NAME="Onyx Local"
 DIST_DIR="dist"
-BUILD_DIR=".build/arm64-apple-macosx/release"
 APP="$DIST_DIR/$APP_NAME.app"
+
+# Avec le SDK macOS 27, `@State` & co. sont des macros dont le plugin
+# (SwiftUIMacros) n'est livré qu'avec Xcode : les Command Line Tools seules
+# échouent sur « plugin for module 'SwiftUIMacros' not found ». Sans Xcode, on
+# retombe sur le SDK 26.x le plus récent, où ce sont encore des property wrappers.
+if [ -z "${SDKROOT:-}" ] && [[ "$(xcode-select -p)" == */CommandLineTools ]]; then
+    SDK26=$(ls -d /Library/Developer/CommandLineTools/SDKs/MacOSX26.*.sdk 2>/dev/null | sort -V | tail -1)
+    if [ -n "$SDK26" ]; then
+        export SDKROOT="$SDK26"
+        echo "→ pas d'Xcode : build avec $SDKROOT"
+    fi
+fi
 
 echo "→ swift build -c $CONF"
 swift build -c "$CONF" --arch arm64
+# Le chemin des produits dépend du build system (.build/arm64-apple-macosx/release
+# historiquement, .build/out/Products/Release avec swift-build) : on le demande.
+BUILD_DIR=$(swift build -c "$CONF" --arch arm64 --show-bin-path)
 
 # ── Bundle skeleton ────────────────────────────────────────────────────────────
 rm -rf "$APP"
@@ -24,7 +38,9 @@ cp "$BUILD_DIR/$APP_NAME" "$APP/Contents/MacOS/$APP_NAME"
 install_name_tool -add_rpath '@loader_path/../Frameworks' "$APP/Contents/MacOS/$APP_NAME" 2>/dev/null || true
 
 # ── Dylibs ────────────────────────────────────────────────────────────────────
-for lib in "$BUILD_DIR"/*.dylib; do
+# sherpa-onnx est lié via @rpath depuis Vendor/ (rpath absolu, dev only) : on
+# l'embarque pour que l'app le trouve via @loader_path/../Frameworks.
+for lib in "$BUILD_DIR"/*.dylib Vendor/sherpa-onnx/lib/*.dylib; do
     [ -f "$lib" ] || continue
     cp "$lib" "$APP/Contents/Frameworks/"
 done

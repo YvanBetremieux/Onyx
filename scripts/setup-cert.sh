@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 NAME="Onyx Local"
-if security find-identity -v -p codesigning login.keychain-db | grep -q "$NAME"; then
+# Pas de `-v` : un cert auto-signé n'est jamais « valid » (CSSMERR_TP_NOT_TRUSTED),
+# donc `-v` ne le listerait jamais et chaque relance réimporterait un doublon.
+if security find-identity -p codesigning login.keychain-db | grep -q "\"$NAME\""; then
   echo "Cert '$NAME' already exists in login keychain."
   exit 0
 fi
@@ -37,6 +39,9 @@ if ! openssl pkcs12 -export -legacy -out "${TMPDIR_CERT}/onyx.p12" \
         -passout pass:onyx
 fi
 security import "${TMPDIR_CERT}/onyx.p12" -k login.keychain-db -P onyx -T /usr/bin/codesign
-security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" login.keychain-db
+# Sans `-k`, `security` demande le mot de passe du trousseau de session (celui
+# de la session macOS) ; `-k ""` ne marche que si ce mot de passe est vide.
+echo "Mot de passe du trousseau de session (= mot de passe macOS) pour autoriser codesign :"
+security set-key-partition-list -S apple-tool:,apple:,codesign: -s login.keychain-db >/dev/null
 # Temp files cleaned up automatically by the trap above.
 echo "Cert '$NAME' installed. BACK IT UP: export to .p12 via Keychain Access."
