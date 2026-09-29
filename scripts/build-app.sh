@@ -61,6 +61,17 @@ fi
 # ── Plists & resources ────────────────────────────────────────────────────────
 cp Resources/Info.plist        "$APP/Contents/Info.plist"
 
+# Version injectée par la CI (sinon : valeurs de Resources/Info.plist).
+[ -z "${ONYX_VERSION:-}" ] || /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $ONYX_VERSION" "$APP/Contents/Info.plist"
+[ -z "${ONYX_BUILD:-}" ]   || /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $ONYX_BUILD" "$APP/Contents/Info.plist"
+
+# Paquets de ressources SwiftPM : l'accesseur Bundle.module les cherche dans
+# Bundle.main.resourceURL. Sans eux, l'app ne marche que sur la machine de build.
+for bundle in "$BUILD_DIR"/*.bundle; do
+    [ -d "$bundle" ] || continue
+    cp -R "$bundle" "$APP/Contents/Resources/"
+done
+
 # Copy any icon / asset files from Resources (skip .plist and .entitlements)
 for res in Resources/*; do
     base=$(basename "$res")
