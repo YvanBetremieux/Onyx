@@ -5,22 +5,32 @@ import CoreGraphics
 public final class SlackHuddleDetector: MeetingAppDetector {
     public let app: MeetingApp = .slackHuddle
 
+    /// CGWindowList est peu coûteux : sonder toutes les 2 s rend un huddle
+    /// court visible presque aussitôt ouvert.
+    public static let defaultPollSeconds: TimeInterval = 2
+    /// Contre le titre qui clignote vide pendant un redessin (incident du
+    /// 2026-08-05) : ~2 sondes. Assez court pour séparer deux huddles enchaînés.
+    public static let defaultEndedGraceSeconds: TimeInterval = 4
+
     private let pollSeconds: TimeInterval
+    private let endedGraceSeconds: TimeInterval
     private let slackBundle = "com.tinyspeck.slackmacgap"
 
-    public init(pollSeconds: TimeInterval = 5) {
+    public init(pollSeconds: TimeInterval = SlackHuddleDetector.defaultPollSeconds,
+                endedGraceSeconds: TimeInterval = SlackHuddleDetector.defaultEndedGraceSeconds) {
         self.pollSeconds = pollSeconds
+        self.endedGraceSeconds = endedGraceSeconds
     }
 
     public func events() -> AsyncStream<CallLifecycle> {
         AsyncStream { continuation in
-            let task = Task.detached { [pollSeconds, slackBundle] in
+            let task = Task.detached { [pollSeconds, endedGraceSeconds, slackBundle] in
                 // `.notice` (not .info): notice is persisted by the unified log,
                 // so a missed detection can be diagnosed after the fact with
                 // `log show` instead of having had a live `log stream` running.
                 Log.recorder.notice(
                     "SlackHuddleDetector: polling started (screenRecording=\(CGPreflightScreenCaptureAccess()))")
-                var debouncer = CallDebouncer()
+                var debouncer = CallDebouncer(endedGraceSeconds: endedGraceSeconds)
                 while !Task.isCancelled {
                     let current = Self.currentHuddleWindowIDs(slackBundle: slackBundle)
                     for ev in debouncer.observe(current) { continuation.yield(ev) }
@@ -74,7 +84,7 @@ public final class SlackHuddleDetector: MeetingAppDetector {
             }
         }
         // Nil-title warning only on change, same discipline as the summary
-        // notice below — one warning per window per 5 s poll would flood the
+        // notice below — one warning per window per 2 s poll would flood the
         // persisted unified log for as long as the permission is missing.
         if nilTitleCount != lastLoggedNilTitleCount {
             lastLoggedNilTitleCount = nilTitleCount
@@ -89,7 +99,7 @@ public final class SlackHuddleDetector: MeetingAppDetector {
         if titles.isEmpty && nilTitleCount > 0 { return nil }
         // Diagnostic: what the detector actually sees, to explain a missed
         // huddle after the fact (title wording, permission, off-screen window).
-        // Only on change — at one poll per 5 s an unconditional notice would
+        // Only on change — at one poll per 2 s an unconditional notice would
         // flood the persisted unified log.
         let summary = "huddle=\(found): \(titles.joined(separator: " | "))"
         if summary != lastLoggedSummary {

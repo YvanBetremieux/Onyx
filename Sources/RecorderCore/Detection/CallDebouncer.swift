@@ -19,6 +19,13 @@ import Foundation
 ///   toward absence nor resets it.
 /// - Absence is measured in wall-clock time between successful polls, not in
 ///   poll counts, so a slow/backed-up polling loop can't shrink the grace.
+///
+/// The grace is per source (2026-09-30): a single 60 s grace for everyone let
+/// ~70 s of post-call audio into recordings (a dictation right after a Meet, the
+/// next huddle merged into the previous one). Meet uses 0 — a *successful*
+/// probe no longer seeing the tab means it was closed or left the call URL —
+/// and Slack a few seconds against its title flicker. A grace of 0 ends on the
+/// first successful absent poll.
 struct CallDebouncer {
     /// How a tracked code stood as of the last *successful* poll.
     private enum Presence {
@@ -52,6 +59,9 @@ struct CallDebouncer {
         for code in current { calls[code] = .seen }
         for (code, presence) in calls where !current.contains(code) {
             switch presence {
+            case .seen where endedGraceSeconds <= 0:
+                calls[code] = nil
+                events.append(.ended(code: code))
             case .seen:
                 calls[code] = .absent(since: t)
             case .absent(let since):

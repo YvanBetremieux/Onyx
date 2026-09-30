@@ -3,10 +3,18 @@ import Foundation
 public final class MeetDetector: MeetingAppDetector {
     public let app: MeetingApp = .meet
 
+    /// Pas de marge : les échecs de sonde (cause de l'incident du 2026-08-06)
+    /// sont déjà neutralisés (`nil`), et un onglet absent d'une sonde réussie
+    /// est une vraie fin. 5 s de sonde : JXA sur tous les onglets coûte cher et
+    /// expire sous la charge de transcription s'il tourne plus souvent.
+    public static let defaultEndedGraceSeconds: TimeInterval = 0
+
     private let pollSeconds: TimeInterval
+    private let endedGraceSeconds: TimeInterval
     private let browserBundles: [String]
 
     public init(pollSeconds: TimeInterval = 5,
+                endedGraceSeconds: TimeInterval = MeetDetector.defaultEndedGraceSeconds,
                 browserBundles: [String] = [
                     "com.google.Chrome",
                     "com.apple.Safari",
@@ -14,6 +22,7 @@ public final class MeetDetector: MeetingAppDetector {
                     "com.brave.Browser",
                 ]) {
         self.pollSeconds = pollSeconds
+        self.endedGraceSeconds = endedGraceSeconds
         self.browserBundles = browserBundles
     }
 
@@ -25,8 +34,8 @@ public final class MeetDetector: MeetingAppDetector {
 
     public func events() -> AsyncStream<CallLifecycle> {
         AsyncStream { continuation in
-            let task = Task.detached { [pollSeconds, browserBundles] in
-                var debouncer = CallDebouncer()
+            let task = Task.detached { [pollSeconds, endedGraceSeconds, browserBundles] in
+                var debouncer = CallDebouncer(endedGraceSeconds: endedGraceSeconds)
                 while !Task.isCancelled {
                     let current = Self.pollAllBrowsers(bundles: browserBundles)
                     for ev in debouncer.observe(current) { continuation.yield(ev) }
