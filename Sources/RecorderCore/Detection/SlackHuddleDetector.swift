@@ -32,7 +32,7 @@ public final class SlackHuddleDetector: MeetingAppDetector {
                     "SlackHuddleDetector: polling started (screenRecording=\(CGPreflightScreenCaptureAccess()))")
                 var debouncer = CallDebouncer(endedGraceSeconds: endedGraceSeconds)
                 while !Task.isCancelled {
-                    let current = Self.currentHuddleWindowIDs(slackBundle: slackBundle)
+                    let current = Self.currentHuddle(slackBundle: slackBundle)
                     for ev in debouncer.observe(current) { continuation.yield(ev) }
                     try? await Task.sleep(nanoseconds: UInt64(pollSeconds * 1_000_000_000))
                 }
@@ -41,6 +41,38 @@ public final class SlackHuddleDetector: MeetingAppDetector {
             continuation.onTermination = { _ in task.cancel() }
         }
     }
+
+    /// Huddle en cours = un processus Slack utilise le micro (macOS 14+). Les
+    /// titres de fenêtres ne suffisent plus : Slack 4.52 ne nomme plus la
+    /// fenêtre du huddle (« - papernest - Slack ») et dessine « Appel d'équipe
+    /// avec … » dans son contenu, invisible pour CGWindowList (2026-10-01).
+    /// Mesuré sur un vrai huddle : micro ouvert de bout en bout, muet compris,
+    /// fermé moins d'une seconde après avoir raccroché. Repli sur les titres
+    /// sous macOS 13, où l'API Core Audio des processus n'existe pas.
+    static func currentHuddle(slackBundle: String) -> Set<String>? {
+        guard #available(macOS 14.0, *) else {
+            return currentHuddleWindowIDs(slackBundle: slackBundle)
+        }
+        guard let processes = AudioProcessProbe.snapshot() else { return nil }
+        let active = isHuddleActive(processes, slackBundle: slackBundle)
+        if active != lastLoggedMicActive {
+            lastLoggedMicActive = active
+            Log.recorder.notice("SlackHuddleDetector: Slack mic in use = \(active)")
+        }
+        return active ? ["huddle"] : []
+    }
+
+    /// Un processus Slack (l'app ou un de ses helpers) capte le micro. La
+    /// sortie son seule ne compte pas : sonnerie avant, son de fin ~10 s après.
+    static func isHuddleActive(_ processes: [AudioProcessUsage], slackBundle: String) -> Bool {
+        processes.contains { p in
+            p.isRunningInput
+                && (p.bundleID == slackBundle || p.bundleID.hasPrefix(slackBundle + "."))
+        }
+    }
+
+    /// Même discipline « seulement au changement » que les autres logs.
+    private static var lastLoggedMicActive: Bool?
 
     /// Last diagnostic summary logged, to log only on change. Only touched
     /// from the single polling task, so unsynchronized access is fine.
@@ -116,16 +148,12 @@ public final class SlackHuddleDetector: MeetingAppDetector {
     /// Slack localizes the huddle window's title — "Huddle: …" in English but
     /// « Appel d’équipe : … » in French (observed live, 2026-08-03), so
     /// matching the English word alone silently missed every huddle on a
-    /// French-localized Slack. Known localized names are matched first; the
-    /// fallback for other locales is the 🎤 suffix Slack appends to the
-    /// active-call window's title (suffix only: an emoji elsewhere in the
-    /// title is just a channel name).
+    /// French-localized Slack. Only used on macOS 13 now (see `currentHuddle`).
+    /// The former 🎤-suffix fallback is gone: Slack 4.52 appends 🎤 to the
+    /// MAIN window's title for a moment at hang-up, which started a recording
+    /// right after the call instead of during it (2026-09-30).
     static func isHuddleTitle(_ title: String) -> Bool {
         let localizedNames = ["huddle", "appel d’équipe", "appel d'équipe"]
-        for name in localizedNames
-        where title.range(of: name, options: .caseInsensitive) != nil {
-            return true
-        }
-        return title.trimmingCharacters(in: .whitespaces).hasSuffix("🎤")
+        return localizedNames.contains { title.range(of: $0, options: .caseInsensitive) != nil }
     }
 }

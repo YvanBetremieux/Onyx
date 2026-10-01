@@ -18,10 +18,13 @@ final class SlackHuddleTitleMatchTests: XCTestCase {
         XCTAssertTrue(SlackHuddleDetector.isHuddleTitle("appel d’équipe : @x - y - Slack"))
     }
 
-    // Locale-independent fallback: Slack suffixes the active-call window's
-    // title with 🎤, after the trailing "Slack".
-    func testMicSuffixMatchesRegardlessOfLocale() {
-        XCTAssertTrue(SlackHuddleDetector.isHuddleTitle("Gruppen-Call: @Jemand - Acme - Slack 🎤"))
+    // Plus de repli « titre qui finit par 🎤 » : Slack 4.52 l'ajoute
+    // brièvement au titre de la fenêtre PRINCIPALE au moment où l'on raccroche
+    // (observé le 2026-09-30 à 17:52:23), ce qui démarrait un enregistrement
+    // juste après l'appel au lieu de pendant.
+    func testMicSuffixAloneNoLongerMatches() {
+        XCTAssertFalse(SlackHuddleDetector.isHuddleTitle(
+            "Paul Brochard (message direct) - papernest - 2 nouveaux éléments - Slack 🎤"))
     }
 
     func testOrdinaryWindowsDoNotMatch() {
