@@ -41,7 +41,8 @@ public actor Recorder {
             // (0.5–2s). Starting mic after keeps both WAV timelines aligned
             // to within a few ms (Merger sorts by relative timestamps).
             try await system.start(writingTo: paths.systemWav)
-            try mic.start(writingTo: paths.micWav)
+            try mic.start(writingTo: paths.micWav,
+                          echoCancellation: MicRecorder.echoCancellationEnabled())
         } catch {
             // Rollback: never leave recorder half-started.
             try? mic.stop()

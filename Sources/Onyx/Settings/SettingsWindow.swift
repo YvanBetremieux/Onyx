@@ -199,6 +199,15 @@ struct SettingsWindow: View {
 
     @ViewBuilder private var advancedTab: some View {
         Form {
+            Section("Micro") {
+                Toggle("Annulation d'écho (traitement de la voix d'Apple)",
+                       isOn: $settings.micEchoCancellation)
+                Text("Retire de ton micro le son des haut-parleurs. Déconseillé : sur "
+                     + "certains Mac, ça baisse le micro de toutes les autres apps "
+                     + "(Meet, Slack…) pendant l'enregistrement. Sans, les doublons "
+                     + "d'écho sont filtrés dans le transcript ; avec un casque, aucun écho.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             Section("Transcription") {
                 Picker("Whisper model", selection: $settings.whisperModel) {
                     Text("Large-v3 Turbo — rapide (recommandé)")

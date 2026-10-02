@@ -8,11 +8,28 @@ public final class MicRecorder {
         /// hears. Without it, speaker playback re-enters through the mic and
         /// every remote sentence gets transcribed twice — once on the system
         /// channel and once as "MOI" (observed on real meetings).
-        public var echoCancellation: Bool = true
+        ///
+        /// OFF by default since 2026-10-02: on an Apple Silicon MacBook Pro it
+        /// lowered the mic for EVERY app (Meet participants could no longer
+        /// hear the user), and the effect lasted until Onyx quit. Echo is then
+        /// handled at the transcript level by the Merger's near-duplicate
+        /// filter. Opt-in via the `micEchoCancellation` setting.
+        public var echoCancellation: Bool = false
         public init() {}
     }
 
-    private let engine = AVAudioEngine()
+    /// Clé UserDefaults du réglage « Annulation d'écho » (app Onyx).
+    public static let echoCancellationDefaultsKey = "micEchoCancellation"
+
+    public static func echoCancellationEnabled(in defaults: UserDefaults = .standard) -> Bool {
+        defaults.bool(forKey: echoCancellationDefaultsKey)
+    }
+
+    /// Un moteur neuf par enregistrement, libéré à l'arrêt : un moteur gardé
+    /// toute la vie de l'app gardait le traitement de la voix actif (et le
+    /// micro des autres apps baissé) bien après la fin de l'enregistrement.
+    private var engine: AVAudioEngine?
+    private var voiceProcessingActive = false
     private let config: Config
     private var writer: WavWriter?
     private var converter: AVAudioConverter?
@@ -33,7 +50,10 @@ public final class MicRecorder {
     /// this to trigger a graceful stop.
     public var sizeCapReached: Bool { writer?.sealed ?? false }
 
-    public func start(writingTo url: URL) throws {
+    /// `echoCancellation` : `nil` → valeur de `Config`.
+    public func start(writingTo url: URL, echoCancellation: Bool? = nil) throws {
+        let engine = AVAudioEngine()
+        self.engine = engine
         writer = try WavWriter(url: url, sampleRate: Int(config.sampleRate), channels: 1)
         targetFormat = AVAudioFormat(
             commonFormat: .pcmFormatFloat32,
@@ -42,12 +62,13 @@ public final class MicRecorder {
             interleaved: false)
 
         let input = engine.inputNode
-        if config.echoCancellation {
+        if echoCancellation ?? config.echoCancellation {
             // Best-effort: some devices/virtual inputs refuse voice
             // processing. Recording without AEC beats not recording — the
             // Merger's near-duplicate filter still cleans the transcript.
             do {
                 try input.setVoiceProcessingEnabled(true)
+                voiceProcessingActive = true
                 if #available(macOS 14.0, *) {
                     // Keep AEC but stop macOS from ducking every other
                     // audio stream (the meeting itself) while recording.
@@ -87,8 +108,15 @@ public final class MicRecorder {
     }
 
     public func stop() throws {
-        engine.inputNode.removeTap(onBus: 0)
-        engine.stop()
+        if let engine {
+            engine.inputNode.removeTap(onBus: 0)
+            engine.stop()
+            if voiceProcessingActive {
+                try? engine.inputNode.setVoiceProcessingEnabled(false)
+                voiceProcessingActive = false
+            }
+        }
+        engine = nil
         try writer?.finish()
         writer = nil
         if sessionPeak == 0 {

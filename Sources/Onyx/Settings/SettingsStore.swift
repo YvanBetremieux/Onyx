@@ -25,6 +25,10 @@ public final class SettingsStore: ObservableObject {
     @Published public var detectionMeetEnabled: Bool {
         didSet { defaults.set(detectionMeetEnabled, forKey: "detectionMeetEnabled") }
     }
+    /// Traitement de la voix d'Apple sur le micro (voir MicRecorder.Config).
+    @Published public var micEchoCancellation: Bool {
+        didSet { defaults.set(micEchoCancellation, forKey: MicRecorder.echoCancellationDefaultsKey) }
+    }
     @Published public var detectionHuddleEnabled: Bool {
         didSet { defaults.set(detectionHuddleEnabled, forKey: "detectionHuddleEnabled") }
     }
@@ -125,6 +129,7 @@ public final class SettingsStore: ObservableObject {
         autoNotesEnabled = defaults.object(forKey: "autoNotesEnabled") as? Bool ?? true
         detectionMeetEnabled = defaults.object(forKey: "detectionMeetEnabled") as? Bool ?? true
         detectionHuddleEnabled = defaults.object(forKey: "detectionHuddleEnabled") as? Bool ?? true
+        micEchoCancellation = defaults.bool(forKey: MicRecorder.echoCancellationDefaultsKey)
         claudeBinaryPath = defaults.string(forKey: "claudeBinaryPath") ?? ""
         claudeModel = defaults.string(forKey: "claudeModel") ?? ""
         appearance = defaults.string(forKey: "appearance") ?? "system"
